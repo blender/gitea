@@ -164,7 +164,7 @@ func userFromReader(r io.Reader, user *goth.User) error {
 	}
 	user.Email = u.Email
 	user.Name = u.Name
-	user.NickName = u.NickName
+	user.NickName = gitealizeUsername(u.NickName)
 	user.UserID = strconv.Itoa(u.ID)
 	user.AvatarURL = fmt.Sprintf("https://id.blender.org/api/user/%s/avatar", user.UserID)
 	return nil

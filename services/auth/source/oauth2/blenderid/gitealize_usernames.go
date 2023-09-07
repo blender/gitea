@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"code.gitea.io/gitea/models/user"
+
 	"github.com/mozillazg/go-unidecode"
 )
 

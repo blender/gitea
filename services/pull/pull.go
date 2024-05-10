@@ -479,7 +479,7 @@ func AddTestPullRequestTask(opts TestPullRequestOptions) {
 					log.Error("UpdateCommitDivergence: %v", err)
 				}
 			}
-			AddToTaskQueue(ctx, pr)
+			AddToTaskQueueOnBaseUpdate(ctx, pr)
 		}
 	})
 }

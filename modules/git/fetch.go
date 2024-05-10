@@ -21,7 +21,9 @@ import (
 // merge base between commits.
 func FetchRemoteCommit(ctx context.Context, repo, remoteRepo RepositoryFacade, commitID string) error {
 	return LockWriteAndDo(ctx, repo, func(ctx context.Context) error {
-		return gitcmd.NewCommand("fetch", "--no-tags").
+		// BLENDER: --no-write-commit-graph works around internal server errors comparing
+		// branches on some repos, caused by commit-graph-chain.lock files that should not be there.
+		return gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").
 			AddDynamicArguments(gitrepo.RepoLocalPath(remoteRepo)).
 			AddDynamicArguments(commitID).
 			WithRepo(repo).Run(ctx)

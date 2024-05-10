@@ -5,6 +5,7 @@ package oauth2
 
 import (
 	"gitea.dev/modules/setting"
+	"gitea.dev/services/auth/source/oauth2/blenderid"
 
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/azureadv2"
@@ -122,6 +123,16 @@ func init() {
 	))
 
 	RegisterGothProvider(&AwsCognitoProvider{})
+
+	RegisterGothProvider(NewCustomProvider(
+		"blenderid", "Blender ID", &CustomURLSettings{
+			TokenURL:   requiredAttribute(blenderid.TokenURL),
+			AuthURL:    requiredAttribute(blenderid.AuthURL),
+			ProfileURL: requiredAttribute(blenderid.ProfileURL),
+		},
+		func(clientID, secret, callbackURL string, custom *CustomURLMapping, scopes []string) (goth.Provider, error) {
+			return blenderid.NewCustomisedURL(clientID, secret, callbackURL, custom.AuthURL, custom.TokenURL, custom.ProfileURL, scopes...), nil
+		}))
 }
 
 const ProviderNameAwsCognito = "aws-cognito"

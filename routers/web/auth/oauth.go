@@ -26,6 +26,8 @@ import (
 	"gitea.dev/modules/proxy"
 	"gitea.dev/modules/session"
 	"gitea.dev/modules/setting"
+	"gitea.dev/modules/timeutil"
+	auth_service "gitea.dev/services/auth"
 	source_service "gitea.dev/services/auth/source"
 	"gitea.dev/services/auth/source/oauth2"
 	"gitea.dev/services/context"
@@ -437,6 +439,17 @@ func handleOAuth2SignIn(ctx *context.Context, authSource *auth.Source, u *user_m
 			ctx.ServerError("updateSession", err)
 			return
 		}
+
+		// BLENDER: remember login for Blender ID.
+		// A proper OAuth implementation would check how long the access token is
+		// valid depending on the provider, but since this is only for Blender ID
+		// we can just set days in the Gitea config.
+		nt, token, err := auth_service.CreateAuthTokenForUserID(ctx, u.ID)
+		if err != nil {
+			ctx.ServerError("CreateAuthTokenForUserID", err)
+			return
+		}
+		ctx.SetSiteCookie(setting.CookieRememberName, nt.ID+":"+token, setting.LogInRememberDays*timeutil.Day)
 
 		if err := resetLocale(ctx, u); err != nil {
 			ctx.ServerError("resetLocale", err)

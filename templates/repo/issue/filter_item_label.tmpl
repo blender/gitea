@@ -26,19 +26,19 @@
 		{{/* The logic here is not the same as the label selector in the issue sidebar.
 		The one in the issue sidebar renders "repo labels | divider | org labels".
 		Maybe the logic should be updated to be consistent.*/}}
-		{{$previousExclusiveScope := "_no_scope"}}
+		{{$previousScope := "_no_scope"}}
 		{{range .Labels}}
-			{{$exclusiveScope := .ExclusiveScope}}
-			{{if and (ne $previousExclusiveScope $exclusiveScope)}}
+			{{$scope := .Scope}}
+			{{if and (ne $previousScope $scope)}}
 				<div class="divider" data-scope="{{.ExclusiveScope}}"></div>
 			{{end}}
-			{{$previousExclusiveScope = $exclusiveScope}}
+			{{$previousScope = $scope}}
 			<a class="item label-filter-query-item" data-label-id="{{.ID}}" data-scope="{{.ExclusiveScope}}" {{if .IsArchived}}data-is-archived{{end}}
 				href="{{QueryBuild $queryLink "labels" .QueryString}}">
 				{{if .IsExcluded}}
 					{{svg "octicon-circle-slash"}}
 				{{else if .IsSelected}}
-					{{Iif $exclusiveScope (svg "octicon-dot-fill") (svg "octicon-check")}}
+					{{Iif .ExclusiveScope (svg "octicon-dot-fill") (svg "octicon-check")}}
 				{{end}}
 				{{ctx.RenderUtils.RenderLabel .}}
 				<p class="tw-ml-auto">{{template "repo/issue/labels/label_archived" .}}</p>

@@ -181,16 +181,21 @@ func (l *Label) BelongsToRepo() bool {
 	return l.RepoID > 0
 }
 
-// ExclusiveScope returns scope substring of label name, or empty string if none exists
-func (l *Label) ExclusiveScope() string {
-	if !l.Exclusive {
-		return ""
-	}
+// Scope returns scope substring of label name, or empty string if none exists
+func (l *Label) Scope() string {
 	scope, name, found := strings.CutLast(l.Name, "/")
 	if !found || scope == "" || name == "" {
 		return ""
 	}
 	return scope
+}
+
+// ExclusiveScope returns scope substring of label name, or empty string if none exists
+func (l *Label) ExclusiveScope() string {
+	if !l.Exclusive {
+		return ""
+	}
+	return l.Scope()
 }
 
 // CompareLabelForDisplay compares labels for displaying them in dropdowns or lists.

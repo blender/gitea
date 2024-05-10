@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"code.gitea.io/gitea/modules/git/gitcmd"
+	logger "code.gitea.io/gitea/modules/log"
 )
 
 // GetMergeBase checks and returns merge base of two branches and the reference used as base.
@@ -29,9 +30,12 @@ func (repo *Repository) GetMergeBase(tmpRemote, base, head string) (string, stri
 	if tmpRemote != "origin" {
 		tmpBaseName := RemotePrefix + tmpRemote + "/tmp_" + base
 		// Fetch commit into a temporary branch in order to be able to handle commits and tags
-		_, _, err := gitcmd.NewCommand("fetch", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &gitcmd.RunOpts{Dir: repo.Path})
+		// --no-write-commit-graph works around issue with commit-graph-chain.lock files that should not be there.
+		_, _, err := gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &gitcmd.RunOpts{Dir: repo.Path})
 		if err == nil {
 			base = tmpBaseName
+		} else {
+			logger.Trace("GetMergeBase failed to git fetch. Error: %v", err)
 		}
 	}
 

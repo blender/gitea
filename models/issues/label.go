@@ -183,16 +183,21 @@ func (l *Label) BelongsToRepo() bool {
 	return l.RepoID > 0
 }
 
-// ExclusiveScope returns scope substring of label name, or empty string if none exists
-func (l *Label) ExclusiveScope() string {
-	if !l.Exclusive {
-		return ""
-	}
+// Return scope substring of label name, or empty string if none exists
+func (l *Label) Scope() string {
 	lastIndex := strings.LastIndex(l.Name, "/")
 	if lastIndex == -1 || lastIndex == 0 || lastIndex == len(l.Name)-1 {
 		return ""
 	}
 	return l.Name[:lastIndex]
+}
+
+// ExclusiveScope returns scope substring of label name, or empty string if none exists
+func (l *Label) ExclusiveScope() string {
+	if !l.Exclusive {
+		return ""
+	}
+	return l.Scope()
 }
 
 // NewLabel creates a new label

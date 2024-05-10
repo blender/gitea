@@ -20,5 +20,5 @@ func GetReviewerTeams(ctx context.Context, repo *repo_model.Repository) ([]*orga
 		return nil, nil
 	}
 
-	return organization.GetTeamsWithAccessToRepo(ctx, repo.OwnerID, repo.ID, perm.AccessModeRead)
+	return organization.FilterLargeTeams(organization.GetTeamsWithAccessToRepo(ctx, repo.OwnerID, repo.ID, perm.AccessModeRead))
 }

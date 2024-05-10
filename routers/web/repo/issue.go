@@ -661,13 +661,13 @@ func handleMentionableAssigneesAndTeams(ctx *context.Context, assignees []*user_
 	}
 
 	if isAdmin {
-		teams, err = org.LoadTeams(ctx)
+		teams, err = organization.FilterLargeTeams(org.LoadTeams(ctx))
 		if err != nil {
 			ctx.ServerError("LoadTeams", err)
 			return
 		}
 	} else {
-		teams, err = org.GetUserTeams(ctx, ctx.Doer.ID)
+		teams, err = organization.FilterLargeTeams(org.GetUserTeams(ctx, ctx.Doer.ID))
 		if err != nil {
 			ctx.ServerError("GetUserTeams", err)
 			return

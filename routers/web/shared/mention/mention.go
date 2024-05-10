@@ -65,9 +65,9 @@ func (c *Collector) AddMentionableTeams(ctx context.Context, doer, owner *user_m
 	var teams []*organization.Team
 	var err error
 	if isAdmin {
-		teams, err = org.LoadTeams(ctx)
+		teams, err = organization.FilterLargeTeams(org.LoadTeams(ctx))
 	} else {
-		teams, err = org.GetUserTeams(ctx, doer.ID)
+		teams, err = organization.FilterLargeTeams(org.GetUserTeams(ctx, doer.ID))
 	}
 	if err != nil {
 		return err

@@ -21,6 +21,7 @@ import (
 	"code.gitea.io/gitea/models/migrations/v1_20"
 	"code.gitea.io/gitea/models/migrations/v1_21"
 	"code.gitea.io/gitea/models/migrations/v1_22"
+	"code.gitea.io/gitea/models/migrations/v1_23"
 	"code.gitea.io/gitea/models/migrations/v1_6"
 	"code.gitea.io/gitea/models/migrations/v1_7"
 	"code.gitea.io/gitea/models/migrations/v1_8"
@@ -69,6 +70,12 @@ type Version struct {
 
 // Use noopMigration when there is a migration that has been no-oped
 var noopMigration = func(_ *xorm.Engine) error { return nil }
+
+// BLENDER: hack to backport feature without going to 1.23 table
+func BLENDER_v122_migration(x *xorm.Engine) error {
+  v1_22.DropWronglyCreatedTable(x)
+  return v1_23.AddContentVersionToIssueAndComment(x)
+}
 
 // This is a sequence of migrations. Add new migrations to the bottom of the list.
 // If you want to "retire" a migration, remove it from the top of the list and
@@ -584,7 +591,7 @@ var migrations = []Migration{
 	// v297 -> v298
 	NewMigration("Add everyone_access_mode for repo_unit", v1_22.AddRepoUnitEveryoneAccessMode),
 	// v298 -> v299
-	NewMigration("Drop wrongly created table o_auth2_application", v1_22.DropWronglyCreatedTable),
+	NewMigration("Drop wrongly created table o_auth2_application", BLENDER_v122_migration),
 
 	// Gitea 1.22.0-rc1 ends at 299
 }

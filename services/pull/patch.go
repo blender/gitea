@@ -128,7 +128,7 @@ func (e *errMergeConflict) Error() string {
 	return fmt.Sprintf("conflict detected at: %s", e.filename)
 }
 
-func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, gitRepo *git.Repository) error {
+func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, gitRepo *git.Repository, filesToRemove *[]string) error {
 	log.Trace("Attempt to merge:\n%v", file)
 
 	switch {
@@ -142,7 +142,8 @@ func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, g
 		}
 
 		// Not a genuine conflict and we can simply remove the file from the index
-		return gitRepo.RemoveFilesFromIndex(file.stage1.path)
+		*filesToRemove = append(*filesToRemove, file.stage1.path)
+		return nil
 	case file.stage1 == nil && file.stage2 != nil && (file.stage3 == nil || file.stage2.SameAs(file.stage3)):
 		// 2. Added in ours but not in theirs or identical in both
 		//
@@ -245,11 +246,16 @@ func AttemptThreeWayMerge(ctx context.Context, gitPath string, gitRepo *git.Repo
 		return false, nil, fmt.Errorf("unable to run read-tree -m! Error: %w", err)
 	}
 
+	// Remove all files with a single command, as this is very slow
+	// when done with one command per file and hundreds of files.
+	var filesToRemove []string
+
 	// Then we use git ls-files -u to list the unmerged files and collate the triples in unmergedfiles
 	unmerged := make(chan *unmergedFile)
 	go unmergedFiles(ctx, gitPath, unmerged)
 
 	defer func() {
+		_ := gitRepo.RemoveFilesFromIndex(filesToRemove...)
 		cancel()
 		for range unmerged {
 			// empty the unmerged channel
@@ -270,7 +276,7 @@ func AttemptThreeWayMerge(ctx context.Context, gitPath string, gitRepo *git.Repo
 		}
 
 		// OK now we have the unmerged file triplet attempt to merge it
-		if err := attemptMerge(ctx, file, gitPath, gitRepo); err != nil {
+		if err := attemptMerge(ctx, file, gitPath, gitRepo, &filesToRemove); err != nil {
 			if conflictErr, ok := err.(*errMergeConflict); ok {
 				log.Trace("Conflict: %s in %s", conflictErr.filename, description)
 				conflict = true

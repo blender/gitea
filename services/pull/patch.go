@@ -128,7 +128,7 @@ func (e *errMergeConflict) Error() string {
 	return fmt.Sprintf("conflict detected at: %s", e.filename)
 }
 
-func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, gitRepo *git.Repository, filesToRemove *[]string) error {
+func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, _ *git.Repository, filesToRemove *[]string, filesToAdd *[]indexEntry) error {
 	log.Trace("Attempt to merge:\n%v", file)
 
 	switch {
@@ -148,9 +148,7 @@ func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, g
 		// 2. Added in ours but not in theirs or identical in both
 		//
 		// Not a genuine conflict just add to the index
-		if err := gitRepo.AddObjectToIndex(file.stage2.mode, git.MustIDFromString(file.stage2.sha), file.stage2.path); err != nil {
-			return err
-		}
+		*filesToAdd = append(*filesToAdd, indexEntry{mode: file.stage2.mode, id: file.stage2.sha, path: file.stage2.path})
 		return nil
 	case file.stage1 == nil && file.stage2 != nil && file.stage3 != nil && file.stage2.sha == file.stage3.sha && file.stage2.mode != file.stage3.mode:
 		// 3. Added in both with the same sha but the modes are different
@@ -161,7 +159,8 @@ func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, g
 		// 4. Added in theirs but not ours:
 		//
 		// Not a genuine conflict just add to the index
-		return gitRepo.AddObjectToIndex(file.stage3.mode, git.MustIDFromString(file.stage3.sha), file.stage3.path)
+		*filesToAdd = append(*filesToAdd, indexEntry{mode: file.stage3.mode, id: file.stage3.sha, path: file.stage3.path})
+		return nil
 	case file.stage1 == nil:
 		// 5. Created by new in both
 		//
@@ -222,7 +221,8 @@ func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, g
 			return err
 		}
 		hash = strings.TrimSpace(hash)
-		return gitRepo.AddObjectToIndex(file.stage2.mode, git.MustIDFromString(hash), file.stage2.path)
+		*filesToAdd = append(*filesToAdd, indexEntry{mode: file.stage2.mode, id: hash, path: file.stage2.path})
+		return nil
 	default:
 		if file.stage1 != nil {
 			return &errMergeConflict{file.stage1.path}
@@ -233,6 +233,12 @@ func attemptMerge(ctx context.Context, file *unmergedFile, tmpBasePath string, g
 		}
 	}
 	return nil
+}
+
+type indexEntry struct {
+	mode string
+	id   string
+	path string
 }
 
 // AttemptThreeWayMerge will attempt to three way merge using git read-tree and then follow the git merge-one-file algorithm to attempt to resolve basic conflicts
@@ -249,6 +255,7 @@ func AttemptThreeWayMerge(ctx context.Context, gitPath string, gitRepo *git.Repo
 	// Remove all files with a single command, as this is very slow
 	// when done with one command per file and hundreds of files.
 	var filesToRemove []string
+	var filesToAdd []indexEntry
 
 	// Then we use git ls-files -u to list the unmerged files and collate the triples in unmergedfiles
 	unmerged := make(chan *unmergedFile)
@@ -256,6 +263,9 @@ func AttemptThreeWayMerge(ctx context.Context, gitPath string, gitRepo *git.Repo
 
 	defer func() {
 		_ = gitRepo.RemoveFilesFromIndex(filesToRemove...)
+		for _, entry := range filesToAdd {
+			_ = gitRepo.AddObjectToIndex(entry.mode, git.MustIDFromString(entry.id), entry.path)
+		}
 		cancel()
 		for range unmerged {
 			// empty the unmerged channel
@@ -276,7 +286,7 @@ func AttemptThreeWayMerge(ctx context.Context, gitPath string, gitRepo *git.Repo
 		}
 
 		// OK now we have the unmerged file triplet attempt to merge it
-		if err := attemptMerge(ctx, file, gitPath, gitRepo, &filesToRemove); err != nil {
+		if err := attemptMerge(ctx, file, gitPath, gitRepo, &filesToRemove, &filesToAdd); err != nil {
 			if conflictErr, ok := err.(*errMergeConflict); ok {
 				log.Trace("Conflict: %s in %s", conflictErr.filename, description)
 				conflict = true

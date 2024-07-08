@@ -255,7 +255,7 @@ func AttemptThreeWayMerge(ctx context.Context, gitPath string, gitRepo *git.Repo
 	go unmergedFiles(ctx, gitPath, unmerged)
 
 	defer func() {
-		_ := gitRepo.RemoveFilesFromIndex(filesToRemove...)
+		_ = gitRepo.RemoveFilesFromIndex(filesToRemove...)
 		cancel()
 		for range unmerged {
 			// empty the unmerged channel

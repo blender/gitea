@@ -53,6 +53,12 @@ RUN apk --no-cache add \
     gnupg \
     openssh-keygen
 
+# External renderers
+RUN apk add --no-cache python3 py3-sphinx
+
+# Git hooks
+RUN apk add --no-cache git-lfs
+
 RUN addgroup \
     -S -g 1000 \
     git && \

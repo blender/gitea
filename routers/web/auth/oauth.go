@@ -299,8 +299,60 @@ func updateAvatarIfNeed(ctx *context.Context, url string, u *user_model.User) {
 	}
 }
 
+// BLENDER: sync user badges
+func updateBadgesIfNeed(ctx *context.Context, rawData map[string]any, u *user_model.User) error {
+	blenderIDBadges, has := rawData["badges"]
+	if !has {
+		return nil
+	}
+	remoteBadgesMap, ok := blenderIDBadges.(map[string]any)
+	if !ok {
+		return fmt.Errorf("unexpected format of remote badges payload: %+v", blenderIDBadges)
+	}
+	userBadges, _, err := user_model.GetUserBadges(ctx, u)
+	if err != nil {
+		return fmt.Errorf("failed to fetch local badges for %s: %w", u.LoginName, err)
+	}
+
+	remoteBadgeSlugs := map[string]struct{}{}
+	localBadgeSlugs := map[string]struct{}{}
+	for slug := range remoteBadgesMap {
+		remoteBadgeSlugs[slug] = struct{}{}
+	}
+	for _, badge := range userBadges {
+		localBadgeSlugs[badge.Slug] = struct{}{}
+	}
+
+	// FIXME move to user_service, do in a transaction
+	for slug := range remoteBadgeSlugs {
+		if _, has := localBadgeSlugs[slug]; has {
+			continue
+		}
+		if err := user_model.AddUserBadge(ctx, u, &user_model.Badge{Slug: slug}); err != nil {
+			// Don't escalate, continue processing other badges
+			log.Error("Failed to add badge slug %s to user %s: %v", slug, u.LoginName, err)
+		}
+	}
+	for slug := range localBadgeSlugs {
+		if _, has := remoteBadgeSlugs[slug]; has {
+			continue
+		}
+		if err := user_model.RemoveUserBadge(ctx, u, &user_model.Badge{Slug: slug}); err != nil {
+			// Don't escalate, continue processing other badges
+			log.Error("Failed to remove badge slug %s from user %s: %v", slug, u.LoginName, err)
+		}
+	}
+	return nil
+}
+
 func handleOAuth2SignIn(ctx *context.Context, source *auth.Source, u *user_model.User, gothUser goth.User) {
 	updateAvatarIfNeed(ctx, gothUser.AvatarURL, u)
+	// BLENDER: sync user badges
+	// Don't escalate any errors, only log them:
+	// we don't want to break login process due to errors in badges sync
+	if err := updateBadgesIfNeed(ctx, gothUser.RawData, u); err != nil {
+		log.Error("Failed to update user badges for %s: %w", u.LoginName, err)
+	}
 
 	needs2FA := false
 	if !source.Cfg.(*oauth2.Source).SkipLocalTwoFA {

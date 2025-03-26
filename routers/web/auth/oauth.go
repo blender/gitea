@@ -314,7 +314,7 @@ func updateBadgesIfNeed(ctx *context.Context, rawData map[string]any, u *user_mo
 	for slug := range remoteBadgesMap {
 		remoteBadges = append(remoteBadges, &user_model.Badge{Slug: slug})
 	}
-	return user_service.UpdateBadges(ctx, u, remoteBadges)
+	return user_service.UpdateBadgesBestEffort(ctx, u, remoteBadges)
 }
 
 func handleOAuth2SignIn(ctx *context.Context, source *auth.Source, u *user_model.User, gothUser goth.User) {

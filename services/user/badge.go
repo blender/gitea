@@ -13,7 +13,9 @@ import (
 )
 
 // BLENDER: sync user badges
-func UpdateBadges(ctx context.Context, u *user_model.User, newBadges []*user_model.Badge) error {
+// This function works in a best-effort fashion:
+// it tolerates all errors and tries to perform all badge changes one-by-one.
+func UpdateBadgesBestEffort(ctx context.Context, u *user_model.User, newBadges []*user_model.Badge) error {
 	return db.WithTx(ctx, func(ctx context.Context) error {
 		oldUserBadges, _, err := user_model.GetUserBadges(ctx, u)
 		if err != nil {

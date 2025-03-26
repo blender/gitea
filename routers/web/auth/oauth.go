@@ -309,40 +309,12 @@ func updateBadgesIfNeed(ctx *context.Context, rawData map[string]any, u *user_mo
 	if !ok {
 		return fmt.Errorf("unexpected format of remote badges payload: %+v", blenderIDBadges)
 	}
-	userBadges, _, err := user_model.GetUserBadges(ctx, u)
-	if err != nil {
-		return fmt.Errorf("failed to fetch local badges for %s: %w", u.LoginName, err)
-	}
 
-	remoteBadgeSlugs := map[string]struct{}{}
-	localBadgeSlugs := map[string]struct{}{}
+	remoteBadges := make([]*user_model.Badge, 0, len(remoteBadgesMap))
 	for slug := range remoteBadgesMap {
-		remoteBadgeSlugs[slug] = struct{}{}
+		remoteBadges = append(remoteBadges, &user_model.Badge{Slug: slug})
 	}
-	for _, badge := range userBadges {
-		localBadgeSlugs[badge.Slug] = struct{}{}
-	}
-
-	// FIXME move to user_service, do in a transaction
-	for slug := range remoteBadgeSlugs {
-		if _, has := localBadgeSlugs[slug]; has {
-			continue
-		}
-		if err := user_model.AddUserBadge(ctx, u, &user_model.Badge{Slug: slug}); err != nil {
-			// Don't escalate, continue processing other badges
-			log.Error("Failed to add badge slug %s to user %s: %v", slug, u.LoginName, err)
-		}
-	}
-	for slug := range localBadgeSlugs {
-		if _, has := remoteBadgeSlugs[slug]; has {
-			continue
-		}
-		if err := user_model.RemoveUserBadge(ctx, u, &user_model.Badge{Slug: slug}); err != nil {
-			// Don't escalate, continue processing other badges
-			log.Error("Failed to remove badge slug %s from user %s: %v", slug, u.LoginName, err)
-		}
-	}
-	return nil
+	return user_service.UpdateBadges(ctx, u, remoteBadges)
 }
 
 func handleOAuth2SignIn(ctx *context.Context, source *auth.Source, u *user_model.User, gothUser goth.User) {

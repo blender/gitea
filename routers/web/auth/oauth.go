@@ -299,8 +299,32 @@ func updateAvatarIfNeed(ctx *context.Context, url string, u *user_model.User) {
 	}
 }
 
+// BLENDER: sync user badges
+func updateBadgesIfNeed(ctx *context.Context, rawData map[string]any, u *user_model.User) error {
+	blenderIDBadges, has := rawData["badges"]
+	if !has {
+		return nil
+	}
+	remoteBadgesMap, ok := blenderIDBadges.(map[string]any)
+	if !ok {
+		return fmt.Errorf("unexpected format of remote badges payload: %+v", blenderIDBadges)
+	}
+
+	remoteBadges := make([]*user_model.Badge, 0, len(remoteBadgesMap))
+	for slug := range remoteBadgesMap {
+		remoteBadges = append(remoteBadges, &user_model.Badge{Slug: slug})
+	}
+	return user_service.UpdateBadgesBestEffort(ctx, u, remoteBadges)
+}
+
 func handleOAuth2SignIn(ctx *context.Context, source *auth.Source, u *user_model.User, gothUser goth.User) {
 	updateAvatarIfNeed(ctx, gothUser.AvatarURL, u)
+	// BLENDER: sync user badges
+	// Don't escalate any errors, only log them:
+	// we don't want to break login process due to errors in badges sync
+	if err := updateBadgesIfNeed(ctx, gothUser.RawData, u); err != nil {
+		log.Error("Failed to update user badges for %s: %w", u.LoginName, err)
+	}
 
 	needs2FA := false
 	if !source.Cfg.(*oauth2.Source).SkipLocalTwoFA {

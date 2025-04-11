@@ -130,9 +130,26 @@
 						<a class="muted" href="{{AppSubUrl}}/user/settings/blocked_users">{{ctx.Locale.Tr "user.block.unblock"}}</a>
 					{{end}}
 				</li>
+				{{if .CanReportSpam}}
+					<li>
+						{{if .ExistingSpamReport}}
+							<span>
+								{{ctx.Locale.Tr "user.spamreport.existing_status" .ExistingSpamReport.Status}}
+							</span>
+						{{else}}
+						  {{if .IsAdmin}}
+								<a class="muted show-modal" href="#" data-modal="#purgespammer-user-modal" data-modal-modal-username="{{.ContextUser.Name}}" data-modal-modal-form.action="{{AppSubUrl}}/-/admin/purge_spammer">{{ctx.Locale.Tr "user.purgespammer.profile_button"}}</a>
+							{{else}}
+								<a class="muted show-modal" href="#" data-modal="#spamreport-user-modal" data-modal-modal-username="{{.ContextUser.Name}}" data-modal-modal-form.action="{{AppSubUrl}}/user/settings/spamreport">{{ctx.Locale.Tr "user.spamreport.profile_button"}}</a>
+							{{end}}
+						{{end}}
+					</li>
+				{{end}}
 			{{end}}
 		</ul>
 	</div>
 </div>
 
 {{template "shared/user/block_user_dialog" .}}
+{{template "shared/user/purgespammer_user_dialog" .}}
+{{template "shared/user/spamreport_user_dialog" .}}

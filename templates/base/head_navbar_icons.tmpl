@@ -11,6 +11,15 @@
 		</div>
 	</a>
 	{{end}}
+
+	{{if and .IsAdmin .PendingSpamReports}}
+	<a class="item tw-mx-0" href="{{AppSubUrl}}/-/admin/spamreports">
+		<strong class="tw-relative attention-important">
+			pending spam reports: {{.PendingSpamReports}}
+		</strong>
+	</a>
+	{{end}}
+
 	<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}">
 		<div class="tw-relative">
 			{{svg "octicon-bell"}}

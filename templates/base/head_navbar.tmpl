@@ -91,6 +91,13 @@
 			</a>
 			{{end}}
 
+			{{if and .IsAdmin .PendingSpamReports}}
+			<a class="item tw-mx-0" href="{{AppSubUrl}}/-/admin/spamreports">
+				<strong class="tw-relative attention-important">
+					pending spam reports: {{.PendingSpamReports}}
+				</strong>
+			</a>
+			{{end}}
 			<a class="item not-mobile tw-mx-0" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}" aria-label="{{ctx.Locale.Tr "notifications"}}">
 				<div class="tw-relative">
 					{{svg "octicon-bell"}}

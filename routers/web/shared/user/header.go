@@ -22,6 +22,7 @@ import (
 	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/modules/util"
 	"code.gitea.io/gitea/services/context"
+	user_service "code.gitea.io/gitea/services/user"
 )
 
 // prepareContextForProfileBigAvatar set the context for big avatar view on the profile page
@@ -88,6 +89,25 @@ func prepareContextForProfileBigAvatar(ctx *context.Context) {
 		} else {
 			ctx.Data["UserBlocking"] = block
 		}
+
+		// BLENDER: spam reporting
+		doerIsTrusted, err := user_service.IsTrustedUser(ctx, ctx.Doer)
+		if err != nil {
+			ctx.ServerError("IsTrustedUser", err)
+			return
+		}
+		userIsTrusted, err := user_service.IsTrustedUser(ctx, ctx.ContextUser)
+		if err != nil {
+			ctx.ServerError("IsTrustedUser", err)
+			return
+		}
+		ctx.Data["CanReportSpam"] = doerIsTrusted && !userIsTrusted
+		existingSpamReport, err := user_model.GetSpamReportForUser(ctx, ctx.ContextUser)
+		if err != nil {
+			ctx.ServerError("GetSpamReportForUser", err)
+			return
+		}
+		ctx.Data["ExistingSpamReport"] = existingSpamReport
 	}
 }
 

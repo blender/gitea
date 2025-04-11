@@ -676,6 +676,9 @@ func registerRoutes(m *web.Router) {
 			m.Get("", user_setting.BlockedUsers)
 			m.Post("", web.Bind(forms.BlockUserForm{}), user_setting.BlockedUsersPost)
 		})
+
+		// BLENDER: spam reporting
+		m.Post("/spamreport", user_setting.SpamReportUserPost)
 	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled))
 
 	m.Group("/user", func() {
@@ -746,6 +749,12 @@ func registerRoutes(m *web.Router) {
 			m.Get("", admin.Emails)
 			m.Post("/activate", admin.ActivateEmail)
 			m.Post("/delete", admin.DeleteEmail)
+		})
+
+		// BLENDER: spam reporting
+		m.Group("/spamreports", func() {
+			m.Get("", admin.SpamReports)
+			m.Post("", admin.SpamReportsPost)
 		})
 
 		m.Group("/orgs", func() {

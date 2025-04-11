@@ -1,0 +1,14 @@
+<div class="ui small modal" id="spamreport-user-modal">
+	<div class="header">{{ctx.Locale.Tr "user.spamreport.title"}}</div>
+	<div class="content">
+		<div class="ui warning message">{{ctx.Locale.Tr "user.spamreport.info"}}</div>
+		<form class="ui form modal-form" method="post">
+			{{.CsrfTokenHtml}}
+			<input type="hidden" name="username" class="modal-username" />
+			<div class="text right actions">
+				<button class="ui cancel button">{{ctx.Locale.Tr "cancel"}}</button>
+				<button class="ui red button">{{ctx.Locale.Tr "user.spamreport.report"}}</button>
+			</div>
+		</form>
+	</div>
+</div>

@@ -31,6 +31,8 @@ func NewContext(original context.Context) {
 	initBasicTasks()
 	initExtendedTasks()
 	initActionsTasks()
+	// BLENDER: spam reporting
+	initSpamReportTasks()
 
 	lock.Lock()
 	for _, task := range tasks {

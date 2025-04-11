@@ -1,0 +1,94 @@
+{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
+
+<script nonce="{{ctx.CspScriptNonce}}">
+document.addEventListener('DOMContentLoaded', function(event) {
+	const selectAll = document.getElementsByClassName('select-all')[0];
+	selectAll && selectAll.addEventListener('change', function() {
+		const checkboxes = document.getElementsByClassName('managed-by-select-all');
+		for (const checkbox of checkboxes) {
+			checkbox.checked = selectAll.checked;
+		}
+	});
+	const purgeBtn = document.getElementsByClassName('purge-btn')[0];
+	purgeBtn && purgeBtn.addEventListener('click', function(e) {
+		if (!confirm('Purge selected accounts?')) {
+			e.preventDefault();
+		}
+	});
+});
+</script>
+<div class="admin-setting-content">
+	<h4 class="ui top attached header">
+		{{ctx.Locale.Tr "admin.spamreports.spamreport_manage_panel"}}
+		<div class="small-menu-items ui compact tiny menu">
+			{{range .StatusCounts}}
+				<a class="{{if eq .Status $.FilterStatus}}active {{end}}item flex-text-inline" href="?status={{printf "%d" .Status}}">
+					{{.Count}} {{.Status}}
+				</a>
+			{{end}}
+		</div>
+	</h4>
+	{{if .SpamReports}}
+		<form method="post">
+			{{.CsrfTokenHtml}}
+			<div class="ui attached table segment">
+				<table class="ui very basic striped table unstackable">
+					<thead>
+						<tr>
+							{{if eq $.FilterStatus 0}}
+								<th><input type="checkbox" class="select-all" /></th>
+							{{end}}
+							<th>{{ctx.Locale.Tr "admin.spamreports.user"}}</th>
+							<th>{{ctx.Locale.Tr "admin.spamreports.user_created"}}</th>
+							<th>{{ctx.Locale.Tr "admin.spamreports.reporter"}}</th>
+							<th>{{ctx.Locale.Tr "admin.spamreports.created"}}</th>
+							<th>{{ctx.Locale.Tr "admin.spamreports.updated"}}</th>
+							<th>{{ctx.Locale.Tr "admin.spamreports.status"}}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{{range .SpamReports}}
+							<tr>
+								{{if eq $.FilterStatus 0}}
+									<td><input type="checkbox" class="managed-by-select-all" name="spamreport_id" value="{{.ID}}" /></td>
+								{{end}}
+								<td><a href="{{AppSubUrl}}/{{.UserName | PathEscape}}">{{.UserName}}</a></td>
+								<td title="{{DateUtils.FullTime .UserCreatedUnix}}">{{DateUtils.TimeSince .UserCreatedUnix}}</td>
+								<td><a href="{{AppSubUrl}}/{{.ReporterName | PathEscape}}">{{.ReporterName}}</a></td>
+								<td title="{{DateUtils.FullTime .CreatedUnix}}">{{DateUtils.TimeSince .CreatedUnix}}</td>
+								<td title="{{DateUtils.FullTime .UpdatedUnix}}">{{DateUtils.TimeSince .UpdatedUnix}}</td>
+								<td>
+									{{if eq .Status 0}}
+										{{svg "octicon-clock" 16 "tw-mr-2 text primary"}}
+									{{end}}
+									{{if eq .Status 1}}
+										{{svg "octicon-lock" 16 "tw-mr-2 text grey"}}
+									{{end}}
+									{{if eq .Status 2}}
+										{{svg "octicon-check" 16 "tw-mr-2 text green"}}
+									{{end}}
+									{{if eq .Status 3}}
+										{{svg "octicon-trash" 16 "tw-mr-2 text red"}}
+									{{end}}
+									{{.Status}}
+								</td>
+							</tr>
+						{{end}}
+					</tbody>
+				</table>
+			</div>
+			{{if eq $.FilterStatus 0}}
+				<br />
+				<button type="submit" name="action" value="process" class="ui submit primary button btn-submit red purge-btn">Purge accounts</button>
+				<button type="submit" name="action" value="dismiss" class="ui submit primary button btn-submit">Dismiss reports</button>
+			{{end}}
+		</form>
+		{{template "base/paginate" .}}
+	{{else}}
+		<div class="ui info message align center">
+			No {{$.FilterStatus}} reports.
+		</div>
+	{{end}}
+</div>
+
+{{template "admin/layout_footer" .}}

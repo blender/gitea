@@ -3,6 +3,7 @@
 {{if and $data $data.IsSigned}}{{/* data may not exist, for example: rendering 503 page before the PageGlobalData middleware */}}
 	{{- $activeStopwatch := call $data.GetActiveStopwatch -}}
 	{{- $notificationUnreadCount := call $data.GetNotificationUnreadCount -}}
+	{{- $pendingSpamReportsCount := call $data.GetPendingSpamReportsCount -}}
 	{{if $activeStopwatch}}
 	<a class="item active-stopwatch {{$itemExtraClass}}" href="{{$activeStopwatch.IssueLink}}" title="{{ctx.Locale.Tr "active_stopwatch"}}" data-seconds="{{$activeStopwatch.Seconds}}">
 		<div class="tw-relative flex-text-block">
@@ -11,6 +12,15 @@
 		</div>
 	</a>
 	{{end}}
+
+	{{if and $data.IsSiteAdmin $pendingSpamReportsCount}}
+	<a class="item tw-mx-0" href="{{AppSubUrl}}/-/admin/spamreports">
+		<strong class="tw-relative attention-important">
+			pending spam reports: {{$pendingSpamReportsCount}}
+		</strong>
+	</a>
+	{{end}}
+
 	<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}">
 		<div class="tw-relative flex-text-block">
 			{{svg "octicon-bell"}}

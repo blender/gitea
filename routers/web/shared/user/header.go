@@ -23,6 +23,7 @@ import (
 	"gitea.dev/modules/setting"
 	"gitea.dev/modules/util"
 	"gitea.dev/services/context"
+	user_service "gitea.dev/services/user"
 )
 
 // prepareContextForProfileBigAvatar set the context for big avatar view on the profile page
@@ -88,6 +89,25 @@ func prepareContextForProfileBigAvatar(ctx *context.Context) {
 		if err != nil && !errors.Is(err, util.ErrNotExist) {
 			ctx.ServerError("GetBlocking", err)
 		}
+
+		// BLENDER: spam reporting
+		doerIsTrusted, err := user_service.IsTrustedUser(ctx, ctx.Doer)
+		if err != nil {
+			ctx.ServerError("IsTrustedUser", err)
+			return
+		}
+		userIsTrusted, err := user_service.IsTrustedUser(ctx, ctx.ContextUser)
+		if err != nil {
+			ctx.ServerError("IsTrustedUser", err)
+			return
+		}
+		ctx.Data["CanReportSpam"] = doerIsTrusted && !userIsTrusted
+		existingSpamReport, err := user_model.GetSpamReportForUser(ctx, ctx.ContextUser)
+		if err != nil {
+			ctx.ServerError("GetSpamReportForUser", err)
+			return
+		}
+		ctx.Data["ExistingSpamReport"] = existingSpamReport
 	}
 }
 

@@ -21,6 +21,7 @@ import (
 	"code.gitea.io/gitea/modules/optional"
 	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/services/context"
+	user_service "code.gitea.io/gitea/services/user"
 )
 
 // prepareContextForCommonProfile store some common data into context data for user's profile related pages (including the nav menu)
@@ -90,6 +91,25 @@ func PrepareContextForProfileBigAvatar(ctx *context.Context) {
 		} else {
 			ctx.Data["UserBlocking"] = block
 		}
+
+		// BLENDER: spam reporting
+		doerIsTrusted, err := user_service.IsTrustedUser(ctx, ctx.Doer)
+		if err != nil {
+			ctx.ServerError("IsTrustedUser", err)
+			return
+		}
+		userIsTrusted, err := user_service.IsTrustedUser(ctx, ctx.ContextUser)
+		if err != nil {
+			ctx.ServerError("IsTrustedUser", err)
+			return
+		}
+		ctx.Data["CanReportSpam"] = doerIsTrusted && !userIsTrusted
+		existingSpamReport, err := user_model.GetSpamReportForUser(ctx, ctx.ContextUser)
+		if err != nil {
+			ctx.ServerError("GetSpamReportForUser", err)
+			return
+		}
+		ctx.Data["ExistingSpamReport"] = existingSpamReport
 	}
 }
 

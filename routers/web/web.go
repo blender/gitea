@@ -721,6 +721,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
 			m.Get("", user_setting.BlockedUsers)
 			m.Post("", web.Bind(forms.BlockUserForm{}), user_setting.BlockedUsersPost)
 		})
+
+		// BLENDER: spam reporting
+		m.Post("/spamreport", user_setting.SpamReportUserPost)
 	}, reqSignIn, user_setting.SettingsCtxData)
 
 	m.Group("/user", func() {
@@ -803,6 +806,13 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
 			m.Post("/activate", admin.ActivateEmail)
 			m.Post("/delete", admin.DeleteEmail)
 		})
+
+		// BLENDER: spam reporting
+		m.Group("/spamreports", func() {
+			m.Get("", admin.SpamReports)
+			m.Post("", admin.SpamReportsPost)
+		})
+		m.Post("/purge_spammer", admin.PurgeSpammerPost)
 
 		m.Group("/orgs", func() {
 			m.Get("", admin.Organizations)

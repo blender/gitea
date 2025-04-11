@@ -11,6 +11,7 @@ import (
 	activities_model "code.gitea.io/gitea/models/activities"
 	"code.gitea.io/gitea/models/db"
 	issues_model "code.gitea.io/gitea/models/issues"
+	user_model "code.gitea.io/gitea/models/user"
 	"code.gitea.io/gitea/modules/log"
 	"code.gitea.io/gitea/services/context"
 )
@@ -65,12 +66,27 @@ func notificationUnreadCount(ctx *context.Context) int64 {
 	return count
 }
 
+// BLENDER: spam reporting
+func pendingSpamReportsCount(ctx *context.Context) int {
+	if ctx.Doer == nil || !ctx.Doer.IsAdmin {
+		return 0
+	}
+	ids, err := user_model.GetPendingSpamReportIDs(ctx)
+	if err != nil {
+		log.Error("Failed to GetPendingSpamReportIDs while rendering header: %v", err)
+		return 0
+	}
+	return len(ids)
+}
+
 type pageGlobalDataType struct {
 	IsSigned    bool
 	IsSiteAdmin bool
 
 	GetNotificationUnreadCount func() int64
 	GetActiveStopwatch         func() *StopwatchTmplInfo
+	// BLENDER: spam reporting
+	GetPendingSpamReportsCount func() int
 }
 
 func PageGlobalData(ctx *context.Context) {
@@ -79,5 +95,8 @@ func PageGlobalData(ctx *context.Context) {
 	data.IsSiteAdmin = ctx.Doer != nil && ctx.Doer.IsAdmin
 	data.GetNotificationUnreadCount = sync.OnceValue(func() int64 { return notificationUnreadCount(ctx) })
 	data.GetActiveStopwatch = sync.OnceValue(func() *StopwatchTmplInfo { return getActiveStopwatch(ctx) })
+	// BLENDER: spam reporting
+	data.GetPendingSpamReportsCount = sync.OnceValue(func() int { return pendingSpamReportsCount(ctx) })
+
 	ctx.Data["PageGlobalData"] = data
 }

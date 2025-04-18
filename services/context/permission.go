@@ -32,10 +32,10 @@ func RequireRepoWriter(unitType unit.Type) func(ctx *Context) {
 	}
 }
 
-// CanEnableEditor checks if the user is allowed to write to the branch of the repo
-func CanEnableEditor() func(ctx *Context) {
+// MustBeAbleToCherryPick checks if the user is allowed to cherry-pick to a branch of the repo
+func MustBeAbleToCherryPick() func(ctx *Context) {
 	return func(ctx *Context) {
-		if !ctx.Repo.CanWriteToBranch(ctx, ctx.Doer, ctx.Repo.BranchName) {
+		if !CanWriteToBranch(ctx, ctx.Doer, ctx.Repo.Repository, ctx.Repo.BranchName) || !ctx.Repo.Repository.CanEnableEditor() {
 			ctx.NotFound("CanWriteToBranch denies permission", nil)
 			return
 		}

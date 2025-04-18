@@ -1,4 +1,5 @@
 // Copyright 2016 The Gogs Authors. All rights reserved.
+// Copyright 2025 The Gitea Authors. All rights reserved.
 // SPDX-License-Identifier: MIT
 
 package repo
@@ -41,37 +42,47 @@ const (
 	frmCommitChoiceNewBranch string = "commit-to-new-branch"
 )
 
-func canCreateBasePullRequest(ctx *context.Context) bool {
-	baseRepo := ctx.Repo.Repository.BaseRepo
+func canCreateBasePullRequest(ctx *context.Context, editRepo *repo_model.Repository) bool {
+	baseRepo := editRepo.BaseRepo
 	return baseRepo != nil && baseRepo.UnitEnabled(ctx, unit.TypePullRequests)
 }
 
-func renderCommitRights(ctx *context.Context) bool {
-	canCommitToBranch, err := ctx.Repo.CanCommitToBranch(ctx, ctx.Doer)
+func renderCommitRights(ctx *context.Context, editRepo *repo_model.Repository) bool {
+	canCommitToBranch, err := context.CanCommitToBranch(ctx, ctx.Doer, editRepo, ctx.Repo.BranchName)
 	if err != nil {
 		log.Error("CanCommitToBranch: %v", err)
 	}
+
+	if editRepo.ID == ctx.Repo.Repository.ID {
+		// Editing the same repository that we are viewing
+		ctx.Data["CanCreatePullRequest"] = ctx.Repo.Repository.UnitEnabled(ctx, unit.TypePullRequests) || canCreateBasePullRequest(ctx, editRepo)
+	} else {
+		// Editing a user fork of the repository we are viewing, always choose a new branch
+		canCommitToBranch.CanCommitToBranch = false
+		canCommitToBranch.UserCanPush = false
+		ctx.Data["CanCreatePullRequest"] = canCreateBasePullRequest(ctx, editRepo)
+	}
+
 	ctx.Data["CanCommitToBranch"] = canCommitToBranch
-	ctx.Data["CanCreatePullRequest"] = ctx.Repo.Repository.UnitEnabled(ctx, unit.TypePullRequests) || canCreateBasePullRequest(ctx)
 
 	return canCommitToBranch.CanCommitToBranch
 }
 
 // redirectForCommitChoice redirects after committing the edit to a branch
-func redirectForCommitChoice(ctx *context.Context, commitChoice, newBranchName, treePath string) {
+func redirectForCommitChoice(ctx *context.Context, editRepo *repo_model.Repository, commitChoice, newBranchName, treePath string) {
 	if commitChoice == frmCommitChoiceNewBranch {
 		// Redirect to a pull request when possible
 		redirectToPullRequest := false
-		repo := ctx.Repo.Repository
+		repo := editRepo
 		baseBranch := ctx.Repo.BranchName
 		headBranch := newBranchName
-		if repo.UnitEnabled(ctx, unit.TypePullRequests) {
-			redirectToPullRequest = true
-		} else if canCreateBasePullRequest(ctx) {
+		if canCreateBasePullRequest(ctx, repo) {
 			redirectToPullRequest = true
 			baseBranch = repo.BaseRepo.DefaultBranch
 			headBranch = repo.Owner.Name + "/" + repo.Name + ":" + headBranch
 			repo = repo.BaseRepo
+		} else if repo.UnitEnabled(ctx, unit.TypePullRequests) {
+			redirectToPullRequest = true
 		}
 
 		if redirectToPullRequest {
@@ -84,7 +95,7 @@ func redirectForCommitChoice(ctx *context.Context, commitChoice, newBranchName, 
 
 	ctx.RedirectToCurrentSite(
 		returnURI,
-		ctx.Repo.RepoLink+"/src/branch/"+util.PathEscapeSegments(newBranchName)+"/"+util.PathEscapeSegments(treePath),
+		editRepo.Link()+"/src/branch/"+util.PathEscapeSegments(newBranchName)+"/"+util.PathEscapeSegments(treePath),
 	)
 }
 
@@ -104,10 +115,15 @@ func getParentTreeFields(treePath string) (treeNames, treePaths []string) {
 }
 
 func editFile(ctx *context.Context, isNewFile bool) {
+	editRepo := getEditRepositoryOrFork(ctx, util.Iif(isNewFile, "_new", "_edit"))
+	if editRepo == nil {
+		return
+	}
+
 	ctx.Data["PageIsViewCode"] = true
 	ctx.Data["PageIsEdit"] = true
 	ctx.Data["IsNewFile"] = isNewFile
-	canCommit := renderCommitRights(ctx)
+	canCommit := renderCommitRights(ctx, editRepo)
 
 	treePath := cleanUploadFileName(ctx.Repo.TreePath)
 	if treePath != ctx.Repo.TreePath {
@@ -189,7 +205,7 @@ func editFile(ctx *context.Context, isNewFile bool) {
 	} else {
 		ctx.Data["commit_choice"] = frmCommitChoiceNewBranch
 	}
-	ctx.Data["new_branch_name"] = GetUniquePatchBranchName(ctx)
+	ctx.Data["new_branch_name"] = GetUniquePatchBranchName(ctx, editRepo)
 	ctx.Data["last_commit"] = ctx.Repo.CommitID
 	ctx.Data["PreviewableExtensions"] = strings.Join(markup.PreviewableExtensions(), ",")
 	ctx.Data["LineWrapExtensions"] = strings.Join(setting.Repository.Editor.LineWrapExtensions, ",")
@@ -225,7 +241,6 @@ func NewFile(ctx *context.Context) {
 }
 
 func editFilePost(ctx *context.Context, form forms.EditRepoFileForm, isNewFile bool) {
-	canCommit := renderCommitRights(ctx)
 	treeNames, treePaths := getParentTreeFields(form.TreePath)
 	branchName := ctx.Repo.BranchName
 	if form.CommitChoice == frmCommitChoiceNewBranch {
@@ -254,11 +269,15 @@ func editFilePost(ctx *context.Context, form forms.EditRepoFileForm, isNewFile b
 		return
 	}
 
-	// Cannot commit to a an existing branch if user doesn't have rights
-	if branchName == ctx.Repo.BranchName && !canCommit {
-		ctx.Data["Err_NewBranchName"] = true
-		ctx.Data["commit_choice"] = frmCommitChoiceNewBranch
-		ctx.RenderWithErr(ctx.Tr("repo.editor.cannot_commit_to_protected_branch", branchName), tplEditFile, &form)
+	editRepo := getEditRepositoryOrError(ctx, tplEditFile, &form)
+	if editRepo == nil {
+		return
+	}
+
+	renderCommitRights(ctx, editRepo)
+
+	// Cannot commit to an existing branch if user doesn't have rights
+	if !canPushToEditRepository(ctx, editRepo, branchName, form.CommitChoice, tplEditFile, &form) {
 		return
 	}
 
@@ -282,9 +301,14 @@ func editFilePost(ctx *context.Context, form forms.EditRepoFileForm, isNewFile b
 		operation = "create"
 	}
 
-	if _, err := files_service.ChangeRepoFiles(ctx, ctx.Repo.Repository, ctx.Doer, &files_service.ChangeRepoFilesOptions{
+	editBranchName, err := pushToEditRepositoryOrError(ctx, editRepo, branchName, tplEditFile, &form)
+	if err != nil {
+		return
+	}
+
+	if _, err := files_service.ChangeRepoFiles(ctx, editRepo, ctx.Doer, &files_service.ChangeRepoFilesOptions{
 		LastCommitID: form.LastCommit,
-		OldBranch:    ctx.Repo.BranchName,
+		OldBranch:    editBranchName,
 		NewBranch:    branchName,
 		Message:      message,
 		Files: []*files_service.ChangeRepoFile{
@@ -374,13 +398,9 @@ func editFilePost(ctx *context.Context, form forms.EditRepoFileForm, isNewFile b
 		}
 	}
 
-	if ctx.Repo.Repository.IsEmpty {
-		if isEmpty, err := ctx.Repo.GitRepo.IsEmpty(); err == nil && !isEmpty {
-			_ = repo_model.UpdateRepositoryCols(ctx, &repo_model.Repository{ID: ctx.Repo.Repository.ID, IsEmpty: false}, "is_empty")
-		}
-	}
+	updateEditRepositoryIsEmpty(ctx, editRepo)
 
-	redirectForCommitChoice(ctx, form.CommitChoice, branchName, form.TreePath)
+	redirectForCommitChoice(ctx, editRepo, form.CommitChoice, branchName, form.TreePath)
 }
 
 // EditFilePost response for editing file
@@ -428,6 +448,11 @@ func DiffPreviewPost(ctx *context.Context) {
 
 // DeleteFile render delete file page
 func DeleteFile(ctx *context.Context) {
+	editRepo := getEditRepositoryOrFork(ctx, "_delete")
+	if editRepo == nil {
+		return
+	}
+
 	ctx.Data["PageIsDelete"] = true
 	ctx.Data["BranchLink"] = ctx.Repo.RepoLink + "/src/" + ctx.Repo.BranchNameSubURL()
 	treePath := cleanUploadFileName(ctx.Repo.TreePath)
@@ -438,7 +463,7 @@ func DeleteFile(ctx *context.Context) {
 	}
 
 	ctx.Data["TreePath"] = treePath
-	canCommit := renderCommitRights(ctx)
+	canCommit := renderCommitRights(ctx, editRepo)
 
 	ctx.Data["commit_summary"] = ""
 	ctx.Data["commit_message"] = ""
@@ -448,7 +473,7 @@ func DeleteFile(ctx *context.Context) {
 	} else {
 		ctx.Data["commit_choice"] = frmCommitChoiceNewBranch
 	}
-	ctx.Data["new_branch_name"] = GetUniquePatchBranchName(ctx)
+	ctx.Data["new_branch_name"] = GetUniquePatchBranchName(ctx, editRepo)
 
 	ctx.HTML(http.StatusOK, tplDeleteFile)
 }
@@ -456,7 +481,6 @@ func DeleteFile(ctx *context.Context) {
 // DeleteFilePost response for deleting file
 func DeleteFilePost(ctx *context.Context) {
 	form := web.GetForm(ctx).(*forms.DeleteRepoFileForm)
-	canCommit := renderCommitRights(ctx)
 	branchName := ctx.Repo.BranchName
 	if form.CommitChoice == frmCommitChoiceNewBranch {
 		branchName = form.NewBranchName
@@ -476,10 +500,15 @@ func DeleteFilePost(ctx *context.Context) {
 		return
 	}
 
-	if branchName == ctx.Repo.BranchName && !canCommit {
-		ctx.Data["Err_NewBranchName"] = true
-		ctx.Data["commit_choice"] = frmCommitChoiceNewBranch
-		ctx.RenderWithErr(ctx.Tr("repo.editor.cannot_commit_to_protected_branch", branchName), tplDeleteFile, &form)
+	editRepo := getEditRepositoryOrError(ctx, tplDeleteFile, &form)
+	if editRepo == nil {
+		return
+	}
+
+	renderCommitRights(ctx, editRepo)
+
+	// Cannot commit to an existing branch if user doesn't have rights
+	if !canPushToEditRepository(ctx, editRepo, branchName, form.CommitChoice, tplDeleteFile, &form) {
 		return
 	}
 
@@ -492,9 +521,14 @@ func DeleteFilePost(ctx *context.Context) {
 		message += "\n\n" + form.CommitMessage
 	}
 
-	if _, err := files_service.ChangeRepoFiles(ctx, ctx.Repo.Repository, ctx.Doer, &files_service.ChangeRepoFilesOptions{
+	editBranchName, err := pushToEditRepositoryOrError(ctx, editRepo, branchName, tplDeleteFile, &form)
+	if err != nil {
+		return
+	}
+
+	if _, err := files_service.ChangeRepoFiles(ctx, editRepo, ctx.Doer, &files_service.ChangeRepoFilesOptions{
 		LastCommitID: form.LastCommit,
-		OldBranch:    ctx.Repo.BranchName,
+		OldBranch:    editBranchName,
 		NewBranch:    branchName,
 		Files: []*files_service.ChangeRepoFile{
 			{
@@ -582,14 +616,19 @@ func DeleteFilePost(ctx *context.Context) {
 		}
 	}
 
-	redirectForCommitChoice(ctx, form.CommitChoice, branchName, treePath)
+	redirectForCommitChoice(ctx, editRepo, form.CommitChoice, branchName, treePath)
 }
 
 // UploadFile render upload file page
 func UploadFile(ctx *context.Context) {
+	editRepo := getEditRepositoryOrFork(ctx, "_upload")
+	if editRepo == nil {
+		return
+	}
+
 	ctx.Data["PageIsUpload"] = true
 	upload.AddUploadContext(ctx, "repo")
-	canCommit := renderCommitRights(ctx)
+	canCommit := renderCommitRights(ctx, editRepo)
 	treePath := cleanUploadFileName(ctx.Repo.TreePath)
 	if treePath != ctx.Repo.TreePath {
 		ctx.Redirect(path.Join(ctx.Repo.RepoLink, "_upload", util.PathEscapeSegments(ctx.Repo.BranchName), util.PathEscapeSegments(treePath)))
@@ -613,7 +652,7 @@ func UploadFile(ctx *context.Context) {
 	} else {
 		ctx.Data["commit_choice"] = frmCommitChoiceNewBranch
 	}
-	ctx.Data["new_branch_name"] = GetUniquePatchBranchName(ctx)
+	ctx.Data["new_branch_name"] = GetUniquePatchBranchName(ctx, editRepo)
 
 	ctx.HTML(http.StatusOK, tplUploadFile)
 }
@@ -623,11 +662,8 @@ func UploadFilePost(ctx *context.Context) {
 	form := web.GetForm(ctx).(*forms.UploadRepoFileForm)
 	ctx.Data["PageIsUpload"] = true
 	upload.AddUploadContext(ctx, "repo")
-	canCommit := renderCommitRights(ctx)
 
-	oldBranchName := ctx.Repo.BranchName
-	branchName := oldBranchName
-
+	branchName := ctx.Repo.BranchName
 	if form.CommitChoice == frmCommitChoiceNewBranch {
 		branchName = form.NewBranchName
 	}
@@ -654,16 +690,14 @@ func UploadFilePost(ctx *context.Context) {
 		return
 	}
 
-	if oldBranchName != branchName {
-		if _, err := ctx.Repo.GitRepo.GetBranch(branchName); err == nil {
-			ctx.Data["Err_NewBranchName"] = true
-			ctx.RenderWithErr(ctx.Tr("repo.editor.branch_already_exists", branchName), tplUploadFile, &form)
-			return
-		}
-	} else if !canCommit {
-		ctx.Data["Err_NewBranchName"] = true
-		ctx.Data["commit_choice"] = frmCommitChoiceNewBranch
-		ctx.RenderWithErr(ctx.Tr("repo.editor.cannot_commit_to_protected_branch", branchName), tplUploadFile, &form)
+	editRepo := getEditRepositoryOrError(ctx, tplUploadFile, &form)
+	if editRepo == nil {
+		return
+	}
+
+	renderCommitRights(ctx, editRepo)
+
+	if !canPushToEditRepository(ctx, editRepo, branchName, form.CommitChoice, tplUploadFile, &form) {
 		return
 	}
 
@@ -703,9 +737,14 @@ func UploadFilePost(ctx *context.Context) {
 		message += "\n\n" + form.CommitMessage
 	}
 
-	if err := files_service.UploadRepoFiles(ctx, ctx.Repo.Repository, ctx.Doer, &files_service.UploadRepoFileOptions{
+	editBranchName, err := pushToEditRepositoryOrError(ctx, editRepo, branchName, tplUploadFile, &form)
+	if err != nil {
+		return
+	}
+
+	if err := files_service.UploadRepoFiles(ctx, editRepo, ctx.Doer, &files_service.UploadRepoFileOptions{
 		LastCommitID: ctx.Repo.CommitID,
-		OldBranch:    oldBranchName,
+		OldBranch:    editBranchName,
 		NewBranch:    branchName,
 		TreePath:     form.TreePath,
 		Message:      message,
@@ -762,19 +801,15 @@ func UploadFilePost(ctx *context.Context) {
 			}
 		} else {
 			// os.ErrNotExist - upload file missing in the intervening time?!
-			log.Error("Error during upload to repo: %-v to filepath: %s on %s from %s: %v", ctx.Repo.Repository, form.TreePath, oldBranchName, form.NewBranchName, err)
+			log.Error("Error during upload to repo: %-v to filepath: %s on %s from %s: %v", editRepo, form.TreePath, editBranchName, form.NewBranchName, err)
 			ctx.RenderWithErr(ctx.Tr("repo.editor.unable_to_upload_files", form.TreePath, err), tplUploadFile, &form)
 		}
 		return
 	}
 
-	if ctx.Repo.Repository.IsEmpty {
-		if isEmpty, err := ctx.Repo.GitRepo.IsEmpty(); err == nil && !isEmpty {
-			_ = repo_model.UpdateRepositoryCols(ctx, &repo_model.Repository{ID: ctx.Repo.Repository.ID, IsEmpty: false}, "is_empty")
-		}
-	}
+	updateEditRepositoryIsEmpty(ctx, editRepo)
 
-	redirectForCommitChoice(ctx, form.CommitChoice, branchName, form.TreePath)
+	redirectForCommitChoice(ctx, editRepo, form.CommitChoice, branchName, form.TreePath)
 }
 
 func cleanUploadFileName(name string) string {
@@ -790,6 +825,7 @@ func cleanUploadFileName(name string) string {
 }
 
 // UploadFileToServer upload file to server file dir not git
+// This is independent of any repository, no repository permissions are checked to call this.
 func UploadFileToServer(ctx *context.Context) {
 	file, header, err := ctx.Req.FormFile("file")
 	if err != nil {
@@ -829,6 +865,7 @@ func UploadFileToServer(ctx *context.Context) {
 }
 
 // RemoveUploadFileFromServer remove file from server file dir
+// This is independent of any repository, no repository permissions are checked to call this.
 func RemoveUploadFileFromServer(ctx *context.Context) {
 	form := web.GetForm(ctx).(*forms.RemoveUploadFileForm)
 	if len(form.File) == 0 {
@@ -849,16 +886,15 @@ func RemoveUploadFileFromServer(ctx *context.Context) {
 // It will be in the form of <username>-patch-<num> where <num> is the first branch of this format
 // that doesn't already exist. If we exceed 1000 tries or an error is thrown, we just return "" so the user has to
 // type in the branch name themselves (will be an empty field)
-func GetUniquePatchBranchName(ctx *context.Context) string {
+func GetUniquePatchBranchName(ctx *context.Context, editRepo *repo_model.Repository) string {
 	prefix := ctx.Doer.LowerName + "-patch-"
 	for i := 1; i <= 1000; i++ {
 		branchName := fmt.Sprintf("%s%d", prefix, i)
-		if _, err := ctx.Repo.GitRepo.GetBranch(branchName); err != nil {
-			if git.IsErrBranchNotExist(err) {
-				return branchName
-			}
+		if exist, err := git_model.IsBranchExist(ctx, editRepo.ID, branchName); err != nil {
 			log.Error("GetUniquePatchBranchName: %v", err)
 			return ""
+		} else if !exist {
+			return branchName
 		}
 	}
 	return ""

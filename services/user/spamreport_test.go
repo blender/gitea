@@ -54,13 +54,13 @@ func TestCreateSpamReport(t *testing.T) {
 func TestProcessSpamReports(t *testing.T) {
 	assert.NoError(t, unittest.PrepareTestDatabase())
 
-	userWithOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2}) // reporter
+	userWithOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})    // reporter
 	userWithoutOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 8}) // spammer
 	err := CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
 	assert.NoError(t, err)
 
 	ids, err := user_model.GetPendingSpamReportIDs(context.Background())
-	assert.Equal(t, 1, len(ids))
+	assert.Len(t, ids, 1)
 	assert.NoError(t, err)
 	cronDoer := &user_model.User{
 		ID:        -1,
@@ -74,6 +74,6 @@ func TestProcessSpamReports(t *testing.T) {
 	assert.True(t, userWithoutOrgs.ProhibitLogin)
 
 	ids, err = user_model.GetPendingSpamReportIDs(context.Background())
-	assert.Equal(t, 0, len(ids))
+	assert.Empty(t, ids)
 	assert.NoError(t, err)
 }

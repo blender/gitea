@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"code.gitea.io/gitea/models/db"
-	"code.gitea.io/gitea/models/organization"
 	issues_model "code.gitea.io/gitea/models/issues"
+	"code.gitea.io/gitea/models/organization"
 	project_model "code.gitea.io/gitea/models/project"
 	user_model "code.gitea.io/gitea/models/user"
 	"code.gitea.io/gitea/modules/log"
@@ -91,7 +91,7 @@ func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) erro
 // We will have to revisit this approach if it actually causes problems.
 // E.g. we could
 //   - either try to unlock the record on failure (this may not always be possible),
-//	   or unlock after some timeout (according to the record's UpdatedUnix)
+//     or unlock after some timeout (according to the record's UpdatedUnix)
 //   - add a new field to keep track of an attempt count per record
 //   - retry on subsequent runs, until the attempt budget is exhausted
 func ProcessSpamReports(ctx context.Context, doer *user_model.User, spamReportIDs []int64) error {
@@ -155,14 +155,14 @@ func cleanupSpam(ctx context.Context, user, doer *user_model.User) error {
 	// UpdateUser and UpdateAuth to clean the profile and prohibit logins.
 	if err := UpdateUser(ctx, user,
 		&UpdateOptions{
-			Description: optional.Some(""),
-			FullName: optional.Some("Confirmed Spammer"),
-			IsActive: optional.Some(false),
-			IsRestricted: optional.Some(true),
-			Location: optional.Some(""),
+			Description:     optional.Some(""),
+			FullName:        optional.Some("Confirmed Spammer"),
+			IsActive:        optional.Some(false),
+			IsRestricted:    optional.Some(true),
+			Location:        optional.Some(""),
 			MaxRepoCreation: optional.Some(0),
-			Visibility: optional.Some(structs.VisibleTypeLimited),
-			Website: optional.Some(""),
+			Visibility:      optional.Some(structs.VisibleTypeLimited),
+			Website:         optional.Some(""),
 		},
 	); err != nil {
 		return fmt.Errorf("failed to UpdateUser: %w", err)
@@ -177,7 +177,9 @@ func cleanupSpam(ctx context.Context, user, doer *user_model.User) error {
 		return fmt.Errorf("failed to fetch IssueIDs: %w", err)
 	}
 	for _, issue := range issues {
-		issue_service.DeleteIssue(ctx, doer, nil, issue)
+		if err := issue_service.DeleteIssue(ctx, doer, nil, issue); err != nil {
+			return fmt.Errorf("failed to delete issue: %w", err)
+		}
 	}
 
 	log.Info("Cleaning up comments by user %s", user.Name)
@@ -185,9 +187,9 @@ func cleanupSpam(ctx context.Context, user, doer *user_model.User) error {
 	for {
 		comments := make([]*issues_model.Comment, 0, batchSize)
 		if err := db.GetEngine(ctx).
-							Where("type=? AND poster_id=?", issues_model.CommentTypeComment, user.ID).
-							Limit(batchSize, 0).
-							Find(&comments); err != nil {
+			Where("type=? AND poster_id=?", issues_model.CommentTypeComment, user.ID).
+			Limit(batchSize, 0).
+			Find(&comments); err != nil {
 			return fmt.Errorf("failed to find comments to delete: %w", err)
 		}
 		if len(comments) == 0 {
@@ -196,7 +198,7 @@ func cleanupSpam(ctx context.Context, user, doer *user_model.User) error {
 
 		for _, comment := range comments {
 			if err := issues_model.DeleteComment(ctx, comment); err != nil {
-				return fmt.Errorf("failed to delete comments: %w", err)
+				return fmt.Errorf("failed to delete comment: %w", err)
 			}
 		}
 	}

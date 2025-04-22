@@ -122,7 +122,6 @@ func GetSpamReportForUser(ctx context.Context, user *User) (*SpamReport, error) 
 	has, err := db.GetEngine(ctx).Where("user_id = ?", user.ID).Get(spamReport)
 	if has {
 		return spamReport, err
-	} else {
-		return nil, err
 	}
+	return nil, err
 }

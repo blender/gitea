@@ -6,7 +6,6 @@
 package admin
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -57,8 +56,6 @@ func SpamReports(ctx *context.Context) {
 
 	ctx.Data["Total"] = count
 	ctx.Data["SpamReports"] = spamReports
-	ids, _ := user_model.GetPendingSpamReportIDs(ctx)
-	fmt.Printf("%v", ids)
 
 	pager := context.NewPagination(int(count), opts.PageSize, opts.Page, 5)
 	pager.SetDefaultParams(ctx)

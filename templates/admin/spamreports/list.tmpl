@@ -71,8 +71,8 @@ document.addEventListener('DOMContentLoaded', function(event) {
 			</div>
 			{{if eq $.FilterStatus 0}}
 				<br />
-				<button type="submit" name="action" value="process" class="ui submit primary button btn-submit">Process</button>
-				<button type="submit" name="action" value="dismiss" class="ui submit primary button btn-submit red">Dismiss</button>
+				<button type="submit" name="action" value="process" class="ui submit primary button btn-submit red" onclick="return confirm('Purge selected accounts?');">Purge accounts</button>
+				<button type="submit" name="action" value="dismiss" class="ui submit primary button btn-submit">Dismiss reports</button>
 			{{end}}
 		</form>
 		{{template "base/paginate" .}}

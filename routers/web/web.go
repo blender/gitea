@@ -284,6 +284,8 @@ func Routes() *web.Router {
 	mid = append(mid, user.GetNotificationCount)
 	mid = append(mid, repo.GetActiveStopwatch)
 	mid = append(mid, goGet)
+	// BLENDER: spam reporting
+	mid = append(mid, admin.GetPendingSpamReports)
 
 	others := web.NewRouter()
 	others.Use(mid...)

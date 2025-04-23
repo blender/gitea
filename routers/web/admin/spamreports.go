@@ -12,6 +12,7 @@ import (
 	"code.gitea.io/gitea/models/db"
 	user_model "code.gitea.io/gitea/models/user"
 	"code.gitea.io/gitea/modules/base"
+	"code.gitea.io/gitea/modules/log"
 	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/services/context"
 	user_service "code.gitea.io/gitea/services/user"
@@ -20,6 +21,20 @@ import (
 const (
 	tplSpamReports base.TplName = "admin/spamreports/list"
 )
+
+// GetPendingSpamReports populates the counter for the header section displayed to site admins.
+func GetPendingSpamReports(ctx *context.Context) {
+	if !ctx.Doer.IsAdmin {
+		return
+	}
+	ids, err := user_model.GetPendingSpamReportIDs(ctx)
+	if err != nil {
+		log.Error("Failed to GetPendingSpamReportIDs while rendering header: %v", err)
+		ctx.Data["PendingSpamReports"] = -1
+		return
+	}
+	ctx.Data["PendingSpamReports"] = len(ids)
+}
 
 // SpamReports shows spam reports
 func SpamReports(ctx *context.Context) {

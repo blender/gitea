@@ -43,31 +43,35 @@ func IsTrustedUser(ctx context.Context, user *user_model.User) (bool, error) {
 func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) (*user_model.SpamReport, error) {
 	reporterIsTrusted, err := IsTrustedUser(ctx, reporter)
 	if err != nil {
-		return fmt.Errorf("failed IsTrustedUser: %w", err)
+		return nil, fmt.Errorf("failed IsTrustedUser: %w", err)
 	}
 	if !reporterIsTrusted {
-		return fmt.Errorf("reporter %s is not trusted", reporter.Name)
+		return nil, fmt.Errorf("reporter %s is not trusted", reporter.Name)
 	}
 	userIsTrusted, err := IsTrustedUser(ctx, user)
 	if err != nil {
-		return fmt.Errorf("failed IsTrustedUser: %w", err)
+		return nil, fmt.Errorf("failed IsTrustedUser: %w", err)
 	}
 	if userIsTrusted {
-		return fmt.Errorf("can't report a trusted user %s", user.Name)
+		return nil, fmt.Errorf("can't report a trusted user %s", user.Name)
 	}
-	err = db.Insert(ctx, &user_model.SpamReport{
+
+	spamReport := &user_model.SpamReport{
 		ReporterID: reporter.ID,
 		UserID:     user.ID,
-	})
+	}
+	err = db.Insert(ctx, spamReport)
 	if err != nil {
 		if err, ok := err.(*pq.Error); ok {
 			// unique_violation, a report already exists, our job is done (by some other reporter).
 			if err.Code == "23505" {
-				return nil
+				// Fetch the existing object, because we need to return an object with a populated ID.
+				_, err := db.GetEngine(ctx).Where("user_id = ?", user.ID).Get(spamReport)
+				return spamReport, err
 			}
 		}
 	}
-	return err
+	return spamReport, err
 }
 
 // ProcessSpamReports performs the cleanup of a reported user account and the content it created.

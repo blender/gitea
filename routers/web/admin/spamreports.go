@@ -100,3 +100,28 @@ func SpamReportsPost(ctx *context.Context) {
 	}
 	ctx.Redirect(setting.AppSubURL + "/-/admin/spamreports")
 }
+
+// PurgeSpammerPost is a shortcut for admins to report and process at the same time.
+func PurgeSpammerPost(ctx *context.Context) {
+	username := ctx.FormString("username")
+
+	user, err := user_model.GetUserByName(ctx, username)
+	if err != nil {
+		ctx.NotFoundOrServerError("GetUserByName", user_model.IsErrUserNotExist, nil)
+		return
+	}
+	spamReport, err := user_service.CreateSpamReport(ctx, ctx.Doer, user)
+	if err != nil {
+		ctx.ServerError("CreateSpamReport", err)
+		return
+	}
+	if err := user_service.ProcessSpamReports(ctx, ctx.Doer, []int64{spamReport.ID}); err != nil {
+		ctx.ServerError("ProcessSpamReports", err)
+		return
+	}
+
+	if ctx.Written() {
+		return
+	}
+	ctx.Redirect(setting.AppSubURL + "/" + username)
+}

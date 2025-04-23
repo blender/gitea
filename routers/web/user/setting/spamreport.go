@@ -31,7 +31,7 @@ func SpamReportUserPost(ctx *context.Context) {
 		ctx.NotFoundOrServerError("GetUserByName", user_model.IsErrUserNotExist, nil)
 		return
 	}
-	if err := user_service.CreateSpamReport(ctx, ctx.Doer, user); err != nil {
+	if _, err := user_service.CreateSpamReport(ctx, ctx.Doer, user); err != nil {
 		ctx.ServerError("CreateSpamReport", err)
 		return
 	}

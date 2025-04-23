@@ -39,15 +39,15 @@ func TestCreateSpamReport(t *testing.T) {
 
 	userWithOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
 	userWithoutOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 8})
-	err := CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
+	_, err := CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
 	assert.NoError(t, err)
 
 	// An untrusted user can't report.
-	err = CreateSpamReport(context.Background(), userWithoutOrgs, userWithoutOrgs)
+	_, err = CreateSpamReport(context.Background(), userWithoutOrgs, userWithoutOrgs)
 	assert.Error(t, err)
 
 	// A trusted user can't be reported.
-	err = CreateSpamReport(context.Background(), userWithOrgs, userWithOrgs)
+	_, err = CreateSpamReport(context.Background(), userWithOrgs, userWithOrgs)
 	assert.Error(t, err)
 }
 
@@ -56,7 +56,7 @@ func TestProcessSpamReports(t *testing.T) {
 
 	userWithOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})    // reporter
 	userWithoutOrgs := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 8}) // spammer
-	err := CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
+	_, err := CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
 	assert.NoError(t, err)
 
 	ids, err := user_model.GetPendingSpamReportIDs(context.Background())

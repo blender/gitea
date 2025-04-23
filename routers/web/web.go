@@ -756,6 +756,7 @@ func registerRoutes(m *web.Router) {
 			m.Get("", admin.SpamReports)
 			m.Post("", admin.SpamReportsPost)
 		})
+		m.Post("/purge_spammer", admin.PurgeSpammerPost)
 
 		m.Group("/orgs", func() {
 			m.Get("", admin.Organizations)

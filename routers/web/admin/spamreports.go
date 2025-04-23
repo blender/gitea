@@ -24,7 +24,7 @@ const (
 
 // GetPendingSpamReports populates the counter for the header section displayed to site admins.
 func GetPendingSpamReports(ctx *context.Context) {
-	if !ctx.Doer.IsAdmin {
+	if ctx.Doer == nil || !ctx.Doer.IsAdmin {
 		return
 	}
 	ids, err := user_model.GetPendingSpamReportIDs(ctx)

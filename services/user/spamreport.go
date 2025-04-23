@@ -66,6 +66,7 @@ func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) (*us
 			// unique_violation, a report already exists, our job is done (by some other reporter).
 			if err.Code == "23505" {
 				// Fetch the existing object, because we need to return an object with a populated ID.
+				spamReport = &user_model.SpamReport{}
 				_, err := db.GetEngine(ctx).Where("user_id = ?", user.ID).Get(spamReport)
 				return spamReport, err
 			}

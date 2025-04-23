@@ -37,15 +37,10 @@ func IsTrustedUser(ctx context.Context, user *user_model.User) (bool, error) {
 
 // CreateSpamReport checks that a reporter can report a user,
 // and inserts a new record in default status=pending
-// for further processing, either manual or automatical.
+// for further processing.
 // If a record for a given user already exists, we try to ignore it
 // (only postgres error is handled).
-//
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// !!! If you change this code to accept reports from non-trusted users, !!!
-// !!! make sure to update process_spam_reports cron task.               !!!
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) error {
+func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) (*user_model.SpamReport, error) {
 	reporterIsTrusted, err := IsTrustedUser(ctx, reporter)
 	if err != nil {
 		return fmt.Errorf("failed IsTrustedUser: %w", err)

@@ -51,8 +51,16 @@ func TestCreateSpamReport(t *testing.T) {
 	_, err = CreateSpamReport(context.Background(), userWithOrgs, userWithOrgs)
 	assert.Error(t, err)
 
-	_, err = CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
+	spamReport, err := CreateSpamReport(context.Background(), userWithOrgs, userWithoutOrgs)
 	assert.NoError(t, err)
+	assert.NotNil(t, spamReport)
+
+	// Try to create a duplicate report by a different reporter.
+	adminUser := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 1})
+	spamReport2, err := CreateSpamReport(context.Background(), adminUser, userWithoutOrgs)
+	assert.NoError(t, err)
+	assert.NotNil(t, spamReport2)
+	assert.Equal(t, spamReport.ID, spamReport2.ID)
 }
 
 func TestProcessSpamReports(t *testing.T) {

@@ -19,8 +19,6 @@ import (
 	"code.gitea.io/gitea/modules/structs"
 	issue_service "code.gitea.io/gitea/services/issue"
 	repo_service "code.gitea.io/gitea/services/repository"
-
-	"github.com/lib/pq"
 )
 
 // IsTrustedUser tells if a user is trusted to report spam and to be excluded from others' spam reports.
@@ -38,8 +36,7 @@ func IsTrustedUser(ctx context.Context, user *user_model.User) (bool, error) {
 // CreateSpamReport checks that a reporter can report a user,
 // and inserts a new record in default status=pending
 // for further processing.
-// If a record for a given user already exists, we try to ignore it
-// (only postgres error is handled).
+// If a record for a given user already exists, it will be returned.
 func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) (*user_model.SpamReport, error) {
 	reporterIsTrusted, err := IsTrustedUser(ctx, reporter)
 	if err != nil {
@@ -60,19 +57,17 @@ func CreateSpamReport(ctx context.Context, reporter, user *user_model.User) (*us
 		ReporterID: reporter.ID,
 		UserID:     user.ID,
 	}
-	err = db.Insert(ctx, spamReport)
-	if err != nil {
-		if err, ok := err.(*pq.Error); ok {
-			// unique_violation, a report already exists, our job is done (by some other reporter).
-			if err.Code == "23505" {
-				// Fetch the existing object, because we need to return an object with a populated ID.
-				spamReport = &user_model.SpamReport{}
-				_, err := db.GetEngine(ctx).Where("user_id = ?", user.ID).Get(spamReport)
-				return spamReport, err
-			}
+	insertErr := db.Insert(ctx, spamReport)
+	if insertErr != nil {
+		// Normally the error may happen due to a duplicate record.
+		// Let's try to fetch the existing record, and if it doesn't exist, escalate the original error.
+		existingSpamReport := &user_model.SpamReport{}
+		if has, _ := db.GetEngine(ctx).Where("user_id = ?", user.ID).Get(existingSpamReport); has {
+			return existingSpamReport, nil
 		}
+		return nil, insertErr
 	}
-	return spamReport, err
+	return spamReport, nil
 }
 
 // ProcessSpamReports performs the cleanup of a reported user account and the content it created.

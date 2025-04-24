@@ -69,12 +69,13 @@ type ListSpamReportsOptions struct {
 }
 
 type ListSpamReportsResults struct {
-	ID           int64
-	CreatedUnix  timeutil.TimeStamp
-	UpdatedUnix  timeutil.TimeStamp
-	Status       SpamReportStatusType
-	UserName     string
-	ReporterName string
+	ID              int64
+	CreatedUnix     timeutil.TimeStamp
+	UpdatedUnix     timeutil.TimeStamp
+	Status          SpamReportStatusType
+	UserName        string
+	UserCreatedUnix timeutil.TimeStamp
+	ReporterName    string
 }
 
 func ListSpamReports(ctx context.Context, opts *ListSpamReportsOptions) ([]*ListSpamReportsResults, int64, error) {
@@ -84,11 +85,19 @@ func ListSpamReports(ctx context.Context, opts *ListSpamReportsOptions) ([]*List
 		return nil, 0, fmt.Errorf("Count: %w", err)
 	}
 	spamReports := make([]*ListSpamReportsResults, 0, opts.PageSize)
-	err = db.GetEngine(ctx).Table("user_spamreport").
-		Select("user_spamreport.id, user_spamreport.created_unix, user_spamreport.updated_unix, user_spamreport.status, `user`.name as user_name, reporter.name as reporter_name").
+	err = db.GetEngine(ctx).Table("user_spamreport").Select(
+		"user_spamreport.id, "+
+			"user_spamreport.created_unix, "+
+			"user_spamreport.updated_unix, "+
+			"user_spamreport.status, "+
+			"`user`.name as user_name, "+
+			"`user`.created_unix as user_created_unix, "+
+			"reporter.name as reporter_name",
+	).
 		Join("LEFT", "`user`", "`user`.id = user_spamreport.user_id").
 		Join("LEFT", "`user` as reporter", "`reporter`.id = user_spamreport.reporter_id").
 		Where("status = ?", opts.Status).
+		OrderBy("user_spamreport.id").
 		Limit(opts.PageSize, (opts.Page-1)*opts.PageSize).
 		Find(&spamReports)
 

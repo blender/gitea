@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
 								<th><input type="checkbox" class="select-all" /></th>
 							{{end}}
 							<th>{{ctx.Locale.Tr "admin.spamreports.user"}}</th>
+							<th>{{ctx.Locale.Tr "admin.spamreports.user_created"}}</th>
 							<th>{{ctx.Locale.Tr "admin.spamreports.reporter"}}</th>
 							<th>{{ctx.Locale.Tr "admin.spamreports.created"}}</th>
 							<th>{{ctx.Locale.Tr "admin.spamreports.updated"}}</th>
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
 									<td><input type="checkbox" class="managed-by-select-all" name="spamreport_id" value="{{.ID}}" /></td>
 								{{end}}
 								<td><a href="{{AppSubUrl}}/{{.UserName | PathEscape}}">{{.UserName}}</a></td>
+								<td title="{{DateUtils.FullTime .UserCreatedUnix}}">{{DateUtils.TimeSince .UserCreatedUnix}}</td>
 								<td><a href="{{AppSubUrl}}/{{.ReporterName | PathEscape}}">{{.ReporterName}}</a></td>
 								<td title="{{DateUtils.FullTime .CreatedUnix}}">{{DateUtils.TimeSince .CreatedUnix}}</td>
 								<td title="{{DateUtils.FullTime .UpdatedUnix}}">{{DateUtils.TimeSince .UpdatedUnix}}</td>

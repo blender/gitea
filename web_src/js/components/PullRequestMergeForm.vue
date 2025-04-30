@@ -26,6 +26,10 @@ const mergeStyleAllowedCount = ref(0);
 const showMergeStyleMenu = ref(false);
 const showActionForm = ref(false);
 
+const mergeMessageTextarea = ref<HTMLTextAreaElement | null>(null);
+const cursorLine = ref(1);
+const cursorColumn = ref(1);
+
 const mergeButtonStyleClass = computed(() => {
   if (mergeForm.value.allOverridableChecksOk) return 'primary';
   return autoMergeWhenSucceed.value ? 'primary' : 'red';
@@ -76,6 +80,19 @@ function switchMergeStyle(name, autoMerge = false) {
 function clearMergeMessage() {
   mergeMessageFieldValue.value = mergeForm.value.defaultMergeMessage;
 }
+
+function updateCursorPosition() {
+  const textarea = mergeMessageTextarea.value;
+  if (!textarea) return;
+
+  const pos = textarea.selectionStart ?? 0;
+  const value = textarea.value;
+
+  const lines = value.substring(0, pos).split('\n');
+  cursorLine.value = lines.length;
+  cursorColumn.value = lines[lines.length - 1].length + 1;
+}
+
 </script>
 
 <template>
@@ -105,7 +122,19 @@ function clearMergeMessage() {
           <input type="text" name="merge_title_field" v-model="mergeTitleFieldValue">
         </div>
         <div class="field">
-          <textarea name="merge_message_field" rows="5" :placeholder="mergeForm.mergeMessageFieldPlaceHolder" v-model="mergeMessageFieldValue"/>
+          <textarea
+            ref="mergeMessageTextarea"
+            name="merge_message_field"
+            rows="5"
+            :placeholder="mergeForm.mergeMessageFieldPlaceHolder"
+            v-model="mergeMessageFieldValue"
+            @click="updateCursorPosition"
+            @keyup="updateCursorPosition"
+            @input="updateCursorPosition"
+          />
+          <div class="tw-mt-2 tw-text-sm tw-text-gray-500">
+            Line: {{ cursorLine }}, Column: {{ cursorColumn }}
+          </div>
           <template v-if="mergeMessageFieldValue !== mergeForm.defaultMergeMessage">
             <button @click.prevent="clearMergeMessage" class="btn tw-mt-1 tw-p-1 interact-fg" :data-tooltip-content="mergeForm.textClearMergeMessageHint">
               {{ mergeForm.textClearMergeMessage }}

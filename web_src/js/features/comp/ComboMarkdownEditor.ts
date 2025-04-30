@@ -161,6 +161,27 @@ export class ComboMarkdownEditor {
 
     initTextareaMarkdown(this.textarea);
     initTextareaEvents(this.textarea, this.dropzone);
+
+    // Cursor Position Tracker
+    const positionDisplay = document.createElement('div');
+    positionDisplay.className = 'tw-mt-2 tw-text-sm tw-text-gray-500';
+    this.container.appendChild(positionDisplay);
+
+    const updateCursorPosition = () => {
+      const value = this.textarea.value;
+      const pos = this.textarea.selectionStart;
+
+      const lines = value.substr(0, pos).split('\n');
+      const line = lines.length;
+      const column = lines[lines.length - 1].length + 1;
+
+      positionDisplay.textContent = `Line: ${line}, Column: ${column}`;
+    };
+
+    this.textarea.addEventListener('input', updateCursorPosition);
+    this.textarea.addEventListener('click', updateCursorPosition);
+    this.textarea.addEventListener('keyup', updateCursorPosition);
+    updateCursorPosition();
   }
 
   async setupDropzone() {

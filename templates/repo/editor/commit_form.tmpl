@@ -13,6 +13,58 @@
 		</div>
 		<div class="field">
 			<textarea name="commit_message" placeholder="{{ctx.Locale.Tr "repo.editor.commit_message_desc"}}" rows="5">{{.commit_message}}</textarea>
+			<script>
+				(function () {
+					const textarea = document.querySelector('.commit-form textarea[name="commit_message"]');
+					if (!textarea) return;
+
+					const statusbar = document.createElement('div');
+					statusbar.className = 'editor-statusbar';
+
+					const autosave = document.createElement('span');
+					autosave.className = 'autosave';
+
+					const lines = document.createElement('span');
+					lines.className = 'lines';
+					lines.textContent = '1';
+
+					const words = document.createElement('span');
+					words.className = 'words';
+					words.textContent = '1';
+
+					const cursor = document.createElement('span');
+					cursor.className = 'cursor';
+					cursor.textContent = '1:1';
+
+					statusbar.appendChild(autosave);
+					statusbar.appendChild(lines);
+					statusbar.appendChild(words);
+					statusbar.appendChild(cursor);
+					textarea.parentElement.appendChild(statusbar);
+
+					function updateStatus() {
+						const value = textarea.value;
+						const pos = textarea.selectionStart;
+
+						const linesArray = value.substr(0, pos).split('\n');
+						const line = linesArray.length;
+						const column = linesArray[linesArray.length - 1].length + 1;
+
+						const totalLines = value.split('\n').length;
+						const totalWords = (value.match(/\b\w+\b/g) || []).length;
+
+						lines.textContent = totalLines.toString();
+						words.textContent = totalWords.toString();
+						cursor.textContent = `${line}:${column}`;
+					}
+
+					textarea.addEventListener('input', updateStatus);
+					textarea.addEventListener('click', updateStatus);
+					textarea.addEventListener('keyup', updateStatus);
+					updateStatus();
+				})();
+			</script>
+
 		</div>
 		<div class="inline field">
 			<div class="ui checkbox">

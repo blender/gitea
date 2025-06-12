@@ -39,29 +39,28 @@ func isRoutePathExpensive(routePattern string) bool {
 	}
 
 	expensivePaths := []string{
-		// code related
+		// code related, very expensive pages
 		"/{username}/{reponame}/archive/",
 		"/{username}/{reponame}/blame/",
-		"/{username}/{reponame}/commit/",
-		"/{username}/{reponame}/commits/",
 		"/{username}/{reponame}/graph",
-		"/{username}/{reponame}/media/",
-		"/{username}/{reponame}/raw/",
-		"/{username}/{reponame}/src/",
 
-		// issue & PR related (no trailing slash)
-		"/{username}/{reponame}/issues",
-		"/{username}/{reponame}/{type:issues}",
-		"/{username}/{reponame}/pulls",
-		"/{username}/{reponame}/{type:pulls}",
-		"/{username}/{reponame}/{type:issues|pulls}", // for 1.23 only
-
-		// wiki
-		"/{username}/{reponame}/wiki/",
-
-		// activity
-		"/{username}/{reponame}/activity/",
+		// activity, trailing slash removed
+		"/{username}/{reponame}/activity",
 	}
+
+	if !(strings.HasPrefix(routePattern, "/blender/") ||
+		strings.HasPrefix(routePattern, "/studio/") ||
+		strings.HasPrefix(routePattern, "/extensions/") ||
+		strings.HasPrefix(routePattern, "/infrastructure/")) {
+		// code related, less expensive not allowed in forks
+		expensivePaths = append(expensivePaths,
+			"/{username}/{reponame}/media/",
+			"/{username}/{reponame}/commit/",
+			"/{username}/{reponame}/commits/",
+			"/{username}/{reponame}/src/",
+			"/{username}/{reponame}/raw/")
+	}
+
 	for _, path := range expensivePaths {
 		if strings.HasPrefix(routePattern, path) {
 			return true

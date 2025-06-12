@@ -41,25 +41,26 @@ func isRoutePathExpensive(routePattern string) bool {
 
 	expensivePaths := []string{
 		// code related
-		"/{username}/{reponame}/archive/",
+		// "/{username}/{reponame}/archive/",
 		"/{username}/{reponame}/blame/",
-		"/{username}/{reponame}/commit/",
-		"/{username}/{reponame}/commits/",
+		// "/{username}/{reponame}/commit/",
+		// "/{username}/{reponame}/commits/",
 		"/{username}/{reponame}/compare/",
-		"/{username}/{reponame}/graph",
-		"/{username}/{reponame}/media/",
-		"/{username}/{reponame}/raw/",
+		// "/{username}/{reponame}/graph",
+		// "/{username}/{reponame}/media/",
+		// "/{username}/{reponame}/raw/",
 		"/{username}/{reponame}/rss/branch/",
-		"/{username}/{reponame}/src/",
+		// "/{username}/{reponame}/src/",
+		"/{username}/{reponame}/compare/",
 
 		// issue & PR related (no trailing slash)
-		"/{username}/{reponame}/issues",
-		"/{username}/{reponame}/{type:issues}",
-		"/{username}/{reponame}/pulls",
-		"/{username}/{reponame}/{type:pulls}",
+		// "/{username}/{reponame}/issues",
+		// "/{username}/{reponame}/{type:issues}",
+		// "/{username}/{reponame}/pulls",
+		// "/{username}/{reponame}/{type:pulls}",
 
 		// wiki
-		"/{username}/{reponame}/wiki/",
+		// "/{username}/{reponame}/wiki/",
 
 		// activity
 		"/{username}/{reponame}/activity/",

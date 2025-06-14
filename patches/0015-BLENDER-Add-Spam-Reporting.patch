@@ -1,7 +1,7 @@
-From 72a35d23c4f740059241a7fab4b59b9aea5fdbef Mon Sep 17 00:00:00 2001
+From c58ce4daad7f00005200639b6a8275e361538824 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
-Subject: [PATCH 15/17] BLENDER: Add Spam Reporting
+Subject: [PATCH] BLENDER: Add Spam Reporting
 
 Spam reporting is available for trusted users (org members and admins) via a
 button on a spammer's profile page;
@@ -10,11 +10,11 @@ a new "pending spam reports" indicator in the header for admins.
 ---
  models/user/spamreport.go                     | 136 +++++++++++
  options/locale/locale_en-US.ini               |  22 ++
- routers/web/admin/spamreports.go              | 142 +++++++++++
+ routers/web/admin/spamreports.go              | 141 +++++++++++
  routers/web/shared/user/header.go             |  20 ++
  routers/web/user/setting/spamreport.go        |  43 ++++
  routers/web/web.go                            |  12 +
- services/user/spamreport.go                   | 226 ++++++++++++++++++
+ services/user/spamreport.go                   | 230 ++++++++++++++++++
  services/user/spamreport_test.go              |  93 +++++++
  templates/admin/navbar.tmpl                   |   5 +-
  templates/admin/spamreports/list.tmpl         |  88 +++++++
@@ -22,7 +22,7 @@ a new "pending spam reports" indicator in the header for admins.
  templates/shared/user/profile_big_avatar.tmpl |  17 ++
  .../shared/user/purgespammer_user_dialog.tmpl |  14 ++
  .../shared/user/spamreport_user_dialog.tmpl   |  14 ++
- 14 files changed, 838 insertions(+), 1 deletion(-)
+ 14 files changed, 841 insertions(+), 1 deletion(-)
  create mode 100644 models/user/spamreport.go
  create mode 100644 routers/web/admin/spamreports.go
  create mode 100644 routers/web/user/setting/spamreport.go
@@ -230,10 +230,10 @@ index b9aae48f86..c1d828f62e 100644
  orgs.teams = Teams
 diff --git a/routers/web/admin/spamreports.go b/routers/web/admin/spamreports.go
 new file mode 100644
-index 0000000000..6f2ce0c37a
+index 0000000000..16fbd615bd
 --- /dev/null
 +++ b/routers/web/admin/spamreports.go
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,141 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -247,15 +247,15 @@ index 0000000000..6f2ce0c37a
 +
 +	"code.gitea.io/gitea/models/db"
 +	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/base"
 +	"code.gitea.io/gitea/modules/log"
 +	"code.gitea.io/gitea/modules/setting"
++	"code.gitea.io/gitea/modules/templates"
 +	"code.gitea.io/gitea/services/context"
 +	user_service "code.gitea.io/gitea/services/user"
 +)
 +
 +const (
-+	tplSpamReports base.TplName = "admin/spamreports/list"
++	tplSpamReports templates.TplName = "admin/spamreports/list"
 +)
 +
 +// GetPendingSpamReports populates the counter for the header section displayed to site admins.
@@ -309,7 +309,6 @@ index 0000000000..6f2ce0c37a
 +	ctx.Data["SpamReports"] = spamReports
 +
 +	pager := context.NewPagination(int(count), opts.PageSize, opts.Page, 5)
-+	pager.SetDefaultParams(ctx)
 +	ctx.Data["Page"] = pager
 +
 +	statusCounts, err := user_model.GetSpamReportStatusCounts(ctx)
@@ -502,10 +501,10 @@ index bd850baec0..385d15dc5e 100644
  		})
 diff --git a/services/user/spamreport.go b/services/user/spamreport.go
 new file mode 100644
-index 0000000000..d240546cc0
+index 0000000000..1d9c2d3236
 --- /dev/null
 +++ b/services/user/spamreport.go
-@@ -0,0 +1,226 @@
+@@ -0,0 +1,230 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -516,6 +515,7 @@ index 0000000000..d240546cc0
 +import (
 +	"context"
 +	"fmt"
++	"strconv"
 +
 +	"code.gitea.io/gitea/models/db"
 +	issues_model "code.gitea.io/gitea/models/issues"
@@ -675,7 +675,10 @@ index 0000000000..d240546cc0
 +	}
 +
 +	log.Info("Cleaning up issues and pulls by user %s", user.Name)
-+	issues, err := issues_model.Issues(ctx, &issues_model.IssuesOptions{PosterID: optional.Some(user.ID)})
++	issues, err := issues_model.Issues(ctx, &issues_model.IssuesOptions{
++			PosterID: strconv.FormatInt(user.ID, 10),
++	})
++
 +	if err != nil {
 +		return fmt.Errorf("failed to fetch IssueIDs: %w", err)
 +	}

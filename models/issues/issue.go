@@ -824,3 +824,21 @@ func ChangeIssueTimeEstimate(ctx context.Context, issue *Issue, doer *user_model
 		return nil
 	})
 }
+
+// GetRecentIssues returns the most recently created issues
+func GetRecentIssues(ctx context.Context, opts *db.ListOptions) ([]*Issue, error) {
+	sess := db.GetEngine(ctx).
+		Where("is_pull = ?", false).
+		OrderBy("created_unix DESC")
+
+	if opts != nil {
+		sess = db.SetSessionPagination(sess, opts)
+	}
+
+	cap := 0
+	if opts != nil {
+			cap = opts.PageSize
+	}
+	issues := make([]*Issue, 0, cap)
+	return issues, sess.Find(&issues)
+}

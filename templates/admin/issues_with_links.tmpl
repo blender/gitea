@@ -1,0 +1,55 @@
+{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin issues")}}
+<div class="admin-setting-content">
+  <h4 class="ui top attached header">
+    {{ctx.Locale.Tr "admin.issues_with_links"}} ({{.Total}})
+  </h4>
+
+  <!-- Table -->
+  <div class="ui attached table segment">
+    <table class="ui very basic striped table unstackable">
+      <thead>
+        <tr>
+          <th>{{ctx.Locale.Tr "type"}}</th>
+          <th>{{ctx.Locale.Tr "admin.issues_with_links.found_links"}}</th>
+          <th>
+            <a href="?sort=created&order={{if eq $.Sort "created"}}{{if eq $.Order "asc"}}desc{{else}}asc{{end}}{{else}}desc{{end}}">
+              {{ctx.Locale.Tr "admin.issues_with_links.created"}} {{SortArrow "created" "created" $.Sort false}}
+            </a>
+          </th>
+					<th>
+            <a href="?sort=updated&order={{if eq $.Sort "updated"}}{{if eq $.Order "asc"}}desc{{else}}asc{{end}}{{else}}desc{{end}}">
+              {{ctx.Locale.Tr "admin.issues_with_links.updated"}} {{SortArrow "updated" "updated" $.Sort false}}
+            </a>
+          </th>
+          <th>{{ctx.Locale.Tr "admin.users.name"}}</th>
+          <th>
+            <a href="?sort=usercreated&order={{if eq $.Sort "usercreated"}}{{if eq $.Order "asc"}}desc{{else}}asc{{end}}{{else}}desc{{end}}">
+              {{ctx.Locale.Tr "admin.issues_with_links.user.created"}} {{SortArrow "usercreated" "usercreated" $.Sort false}}
+            </a>
+          </th>
+          <th>{{ctx.Locale.Tr "repo.repo_name"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Items}}
+        <tr>
+          <td>{{.Type}}</td>
+          <td class="gt-ellipsis tw-max-w-96"><a href="{{.ItemLink}}" target="_blank" rel="noopener noreferrer">{{.Content}}</a></td>
+          <td>{{DateUtils.AbsoluteShort .Created}}</td>
+          <td>{{DateUtils.AbsoluteShort .Updated}}</td>
+          <td><a href="{{.User.HomeLink}}">{{.User.Name}}</a></td>
+          <td>{{DateUtils.AbsoluteShort .UserCreated}}</td>
+          <td class="gt-ellipsis tw-max-w-96"><a href="{{.RepoLink}}" target="_blank" rel="noopener noreferrer">{{.RepoName}}</a></td>
+        </tr>
+        {{else}}
+        <tr class="no-results-row">
+          <td class="tw-text-center" colspan="6">{{ctx.Locale.Tr "no_results_found"}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  {{template "base/paginate" .}}
+</div>
+{{template "admin/layout_footer" .}}

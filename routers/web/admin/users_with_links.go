@@ -2,9 +2,9 @@ package admin
 
 import (
 	"net/http"
-	"strings"
 
 	user_model "code.gitea.io/gitea/models/user"
+	"code.gitea.io/gitea/routers/utils"
 	"code.gitea.io/gitea/modules/optional"
 	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/modules/templates"
@@ -16,8 +16,8 @@ const tplUsersWithLinks templates.TplName = "admin/users_with_links"
 
 // UsersWithLinks renders a list of users that contain hyperlinks in bio fields
 func UsersWithLinks(ctx *context.Context) {
-	ctx.Data["Title"] = ctx.Tr("admin.users.with_links")
-	ctx.Data["PageIsAdminUsers"] = true
+	ctx.Data["Title"] = ctx.Tr("admin.users_with_links")
+	ctx.Data["PageIsUsersWithLinks"] = true
 
 	// Parse filters from query parameters
 	statusActive := ctx.FormString("status_filter[is_active]")
@@ -60,8 +60,8 @@ func UsersWithLinks(ctx *context.Context) {
 	// Filter users with hyperlinks in bio fields
 	filtered := make([]*user_model.User, 0, len(users))
 	for _, u := range users {
-		if containsHyperlink(u.FullName) || containsHyperlink(u.Description) ||
-			containsHyperlink(u.Location) || containsHyperlink(u.Website) {
+		if utils.ContainsHyperlink(u.FullName) || utils.ContainsHyperlink(u.Description) ||
+			utils.ContainsHyperlink(u.Location) || utils.ContainsHyperlink(u.Website) {
 			filtered = append(filtered, u)
 		}
 	}
@@ -76,9 +76,4 @@ func UsersWithLinks(ctx *context.Context) {
 	ctx.Data["Page"] = pager
 
 	ctx.HTML(http.StatusOK, tplUsersWithLinks)
-}
-
-func containsHyperlink(text string) bool {
-	text = strings.ToLower(text)
-	return strings.Contains(text, "http://") || strings.Contains(text, "https://")
 }

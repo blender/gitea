@@ -1313,3 +1313,21 @@ func InsertIssueComments(ctx context.Context, comments []*Comment) error {
 	}
 	return committer.Commit()
 }
+
+// GetRecentComments returns the most recent issue comments
+func GetRecentComments(ctx context.Context, opts *db.ListOptions) ([]*Comment, error) {
+	sess := db.GetEngine(ctx).
+		Where("type = ?", CommentTypeComment).
+		OrderBy("created_unix DESC")
+
+	if opts != nil {
+		sess = db.SetSessionPagination(sess, opts)
+	}
+
+	cap := 0
+	if opts != nil {
+			cap = opts.PageSize
+	}
+	comments := make([]*Comment, 0, cap)
+	return comments, sess.Find(&comments)
+}

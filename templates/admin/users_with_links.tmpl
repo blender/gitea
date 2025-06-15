@@ -1,0 +1,50 @@
+{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
+<div class="admin-setting-content">
+	<h4 class="ui top attached header">
+		{{ctx.Locale.Tr "admin.users_with_links"}} ({{.Total}})
+	</h4>
+
+	<div class="ui attached table segment">
+		<table class="ui very basic striped table unstackable">
+			<thead>
+				<tr>
+					<th><input type="checkbox" id="select-all"></th>
+					<th>ID</th>
+					<th>{{ctx.Locale.Tr "admin.users.name"}}</th>
+					<th>{{ctx.Locale.Tr "admin.users.full_name"}}</th>
+					<th>{{ctx.Locale.Tr "admin.users.description"}}</th>
+					<th>{{ctx.Locale.Tr "admin.users.location"}}</th>
+					<th>{{ctx.Locale.Tr "admin.users.website"}}</th>
+					<th>{{ctx.Locale.Tr "admin.users.created"}}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{{range .Users}}
+				<tr>
+					<td><input type="checkbox" name="user_ids" value="{{.ID}}"></td>
+					<td>{{.ID}}</td>
+					<td><a href="{{.HomeLink}}">{{.Name}}</a></td>
+					<td>{{.FullName}}</td>
+					<td class="gt-ellipsis tw-max-w-48">{{.Description}}</td>
+					<td class="gt-ellipsis tw-max-w-48">{{.Location}}</td>
+					<td class="gt-ellipsis tw-max-w-48"><a href="{{.Website}}" target="_blank">{{.Website}}</a></td>
+					<td>{{DateUtils.AbsoluteShort .CreatedUnix}}</td>
+				</tr>
+				{{else}}
+				<tr class="no-results-row">
+					<td class="tw-text-center" colspan="8">{{ctx.Locale.Tr "no_results_found"}}</td>
+				</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</div>
+
+	{{template "base/paginate" .}}
+</div>
+<script>
+	document.getElementById('select-all').addEventListener('click', function () {
+		const checkboxes = document.querySelectorAll('input[name="user_ids"]');
+		for (const cb of checkboxes) cb.checked = this.checked;
+	});
+</script>
+{{template "admin/layout_footer" .}}

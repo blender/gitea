@@ -31,6 +31,9 @@
 				<a class="{{if .PageIsSpamReports}}active {{end}}item" href="{{AppSubUrl}}/-/admin/spamreports">
 					{{ctx.Locale.Tr "admin.spamreports"}}
 				</a>
+				<a class="{{if .PageIsSpamReports}}active {{end}}item" href="{{AppSubUrl}}/-/admin/users_with_links">
+					{{ctx.Locale.Tr "admin.users_with_links"}}
+				</a>
 			</div>
 		</details>
 		<details class="item toggleable-item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>

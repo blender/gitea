@@ -761,6 +761,9 @@ func registerWebRoutes(m *web.Router) {
 		})
 
 		// BLENDER: spam reporting
+		m.Group("/users_with_links", func() {
+			m.Get("", admin.UsersWithLinks)
+		})
 		m.Group("/spamreports", func() {
 			m.Get("", admin.SpamReports)
 			m.Post("", admin.SpamReportsPost)

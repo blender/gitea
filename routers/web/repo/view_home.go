@@ -408,6 +408,7 @@ func Home(ctx *context.Context) {
 	ctx.Data["Title"] = title
 	ctx.Data["PageIsViewCode"] = true
 	ctx.Data["RepositoryUploadEnabled"] = setting.Repository.Upload.Enabled // show New File / Upload File buttons
+	ctx.Data["CanEnableEditor"] = ctx.Repo.CanEnableEditor(ctx, ctx.Doer)
 
 	if ctx.Repo.Commit == nil || ctx.Repo.Repository.IsEmpty || ctx.Repo.Repository.IsBroken() {
 		// empty or broken repositories need to be handled differently

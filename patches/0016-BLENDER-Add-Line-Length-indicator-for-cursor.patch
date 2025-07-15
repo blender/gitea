@@ -1,7 +1,7 @@
-From 8466382c22d70c11c8b71a90263663411d59ddd6 Mon Sep 17 00:00:00 2001
+From f276d2986da254ac0f96f4e79b90c139c4069941 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Fri, 2 May 2025 11:31:25 +0200
-Subject: [PATCH 16/17] BLENDER: Add Line Length indicator for cursor
+Subject: [PATCH 16/18] BLENDER: Add Line Length indicator for cursor
 
 ---
  templates/repo/editor/commit_form.tmpl        | 52 +++++++++++++++++++

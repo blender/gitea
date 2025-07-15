@@ -1,7 +1,7 @@
-From 3e244276ab49e7edd925df8979d7a0f0b39770ae Mon Sep 17 00:00:00 2001
+From 57208caa58f0313d3b00c8c1e6f6b74f1b040c4f Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:02 +0200
-Subject: [PATCH 07/17] BLENDER: Remember login for OAuth / Blender ID
+Subject: [PATCH 07/18] BLENDER: Remember login for OAuth / Blender ID
 
 Otherwise for some browsers, users have to login again for every session.
 ---

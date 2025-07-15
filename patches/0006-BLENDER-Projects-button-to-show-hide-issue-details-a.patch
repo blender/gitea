@@ -1,7 +1,7 @@
-From d424d073fb21437c7ab2b47716e52ccca1af1ef4 Mon Sep 17 00:00:00 2001
+From 7992807ec7b449dd5d7fae49e0decc1f0b62804b Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:00:36 +0200
-Subject: [PATCH 06/17] BLENDER: Projects: button to show/hide issue details
+Subject: [PATCH 06/18] BLENDER: Projects: button to show/hide issue details
  and closed issue
 
 Both are off by default. This is implemented fully on the frontend, so
@@ -157,10 +157,10 @@ index 41fe6cea8f..99d77f4adf 100644
  	{{end}}
  {{end}}
 diff --git a/web_src/css/features/projects.css b/web_src/css/features/projects.css
-index 1d09e9c7ea..b6bd1d250d 100644
+index 25cb530f85..bfffa31138 100644
 --- a/web_src/css/features/projects.css
 +++ b/web_src/css/features/projects.css
-@@ -19,6 +19,14 @@
+@@ -20,6 +20,14 @@
  }
  
  .project-column {
@@ -176,10 +176,10 @@ index 1d09e9c7ea..b6bd1d250d 100644
    display: flex;
    flex-direction: column;
 diff --git a/web_src/css/repo/issue-card.css b/web_src/css/repo/issue-card.css
-index fb832bd05a..4fb9b42f46 100644
+index 27f3c2d554..cfce0cea1b 100644
 --- a/web_src/css/repo/issue-card.css
 +++ b/web_src/css/repo/issue-card.css
-@@ -37,4 +37,6 @@
+@@ -38,4 +38,6 @@
    gap: 0.25em;
    justify-content: end;
    flex-wrap: wrap;

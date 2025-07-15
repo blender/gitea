@@ -1,7 +1,7 @@
-From a6b1b4b3516ec833c4ebf737b60ab8ff45562921 Mon Sep 17 00:00:00 2001
+From 8d377ac7641a58e37e8aae5a529bb7f84498c074 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
-Subject: [PATCH 05/17] BLENDER: Support both exclusive and non-exclusive scope
+Subject: [PATCH 05/18] BLENDER: Support both exclusive and non-exclusive scope
  for labels
 
 ---
@@ -46,7 +46,7 @@ index cfbe100926..cb7726aa71 100644
  func NewLabel(ctx context.Context, l *Label) error {
  	color, err := label.NormalizeColor(l.Color)
 diff --git a/modules/templates/util_render.go b/modules/templates/util_render.go
-index 8d9ba1000c..53a16944af 100644
+index 14655a53c3..97bbd7958c 100644
 --- a/modules/templates/util_render.go
 +++ b/modules/templates/util_render.go
 @@ -127,7 +127,7 @@ func (ut *RenderUtils) RenderLabel(label *issues_model.Label) template.HTML {
@@ -84,7 +84,7 @@ index 8e2410393d..0d196d1f87 100644
  					</div>
  				{{end}}
 diff --git a/templates/repo/issue/filter_item_label.tmpl b/templates/repo/issue/filter_item_label.tmpl
-index 0883d93804..11a3ddcc6f 100644
+index 04c3605a6a..f0bffcd155 100644
 --- a/templates/repo/issue/filter_item_label.tmpl
 +++ b/templates/repo/issue/filter_item_label.tmpl
 @@ -26,19 +26,19 @@

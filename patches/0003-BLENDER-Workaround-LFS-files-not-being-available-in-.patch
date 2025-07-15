@@ -1,7 +1,7 @@
-From 8d9d04e240a0c42a20c5d96c4f20d15e620f966c Mon Sep 17 00:00:00 2001
+From 0fc592fdf34a016b71bd8c8defd550f447f65ee3 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:32:53 +0200
-Subject: [PATCH 03/17] BLENDER: Workaround LFS files not being available in
+Subject: [PATCH 03/18] BLENDER: Workaround LFS files not being available in
  pull requests
 
 Patch taken from issue number 17715, associating the LFS pointer when the

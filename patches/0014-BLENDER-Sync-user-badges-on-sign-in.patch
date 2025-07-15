@@ -1,7 +1,7 @@
-From 5b5fbcb39d1941a4f67856b8af02cce461a31f72 Mon Sep 17 00:00:00 2001
+From 407c5c9833c79f4be7c08fb64267d16cfa3fe6d9 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 2 Apr 2025 17:30:05 +0200
-Subject: [PATCH 14/17] BLENDER: Sync user badges on sign-in
+Subject: [PATCH 14/18] BLENDER: Sync user badges on sign-in
 
 Don't escalate any errors, only log them, to avoid breaking sign-in.
 ---

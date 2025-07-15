@@ -1,7 +1,7 @@
-From 4bb623a96762b5457e7b8c0724bd1c48fe004fc2 Mon Sep 17 00:00:00 2001
+From ef1b61c5449cc60d2b4064f35d7c0b1a15389c44 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:49 +0200
-Subject: [PATCH 08/17] BLENDER: Always login with Blender ID, unless
+Subject: [PATCH 08/18] BLENDER: Always login with Blender ID, unless
  noredirect is specified
 
 ---

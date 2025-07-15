@@ -1,7 +1,7 @@
-From 5843b4bdb51b90c22777f49d7c730cf2429b9a7f Mon Sep 17 00:00:00 2001
+From ca277cd140105bc071193958f4bc69fc23adfe28 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
-Date: Fri, 19 Jun 2025 00:00:00 +0200
-Subject: [PATCH 12/18] BLENDER: Edit file workflow for creating a fork and
+Date: Thu, 19 Jun 2025 00:00:00 +0200
+Subject: [PATCH 18/18] BLENDER: Edit file workflow for creating a fork and
  proposing changes
 
 When viewing a file that the user can't edit because they can't write to
@@ -29,36 +29,39 @@ the base repository that does the right thing.
  routers/api/v1/api.go                   |   2 +-
  routers/api/v1/repo/file.go             |   2 +-
  routers/web/repo/cherry_pick.go         |   6 +-
- routers/web/repo/editor.go              | 170 ++++++----
+ routers/web/repo/editor.go              | 157 ++++++----
  routers/web/repo/editor_test.go         |   2 +-
- routers/web/repo/fork.go                |  68 ++--
- routers/web/repo/fork_to_edit.go        | 241 ++++++++++++++
- routers/web/repo/patch.go               |  36 ++-
+ routers/web/repo/fork.go                |  73 +++--
+ routers/web/repo/fork_to_edit.go        | 188 +++++++++++
+ routers/web/repo/patch.go               |  34 +-
+ routers/web/repo/pull.go                |   1 +
  routers/web/repo/repo.go                |  15 -
- routers/web/repo/view_file.go           |   8 +-
- routers/web/repo/view_readme.go         |   6 +-
- routers/web/web.go                      |  20 +-
+ routers/web/repo/view_file.go           |  21 +-
+ routers/web/repo/view_home.go           |   1 +
+ routers/web/repo/view_readme.go         |  15 +-
+ routers/web/web.go                      |  18 +-
  services/context/permission.go          |   6 +-
- services/context/repo.go                |  47 ++-
+ services/context/repo.go                | 102 +++++-
  services/forms/repo_form.go             |  12 +
+ templates/repo/diff/box.tmpl            |   2 +-
  templates/repo/editor/delete.tmpl       |   5 +
  templates/repo/editor/edit.tmpl         |   5 +
- templates/repo/editor/fork.tmpl         |  41 +++
+ templates/repo/editor/fork.tmpl         |  40 +++
  templates/repo/editor/patch.tmpl        |   5 +
  templates/repo/editor/upload.tmpl       |   5 +
  templates/repo/empty.tmpl               |   2 +-
- templates/repo/view_content.tmpl        | 111 +++++++
- tests/integration/editor_test.go        | 408 ++++++++++++++++++++----
+ templates/repo/view_content.tmpl        |   4 +-
+ templates/repo/view_file.tmpl           |  10 +-
+ tests/integration/editor_test.go        | 401 ++++++++++++++++++++----
  tests/integration/pull_compare_test.go  |   2 +-
  tests/integration/pull_merge_test.go    |  24 +-
  tests/integration/pull_review_test.go   |   2 +-
  tests/integration/pull_status_test.go   |   6 +-
  tests/integration/repo_activity_test.go |   4 +-
  tests/integration/repo_webhook_test.go  |   4 +-
- 31 files changed, 1034 insertions(+), 244 deletions(-)
+ 35 files changed, 950 insertions(+), 239 deletions(-)
  create mode 100644 routers/web/repo/fork_to_edit.go
  create mode 100644 templates/repo/editor/fork.tmpl
- create mode 100644 templates/repo/view_content.tmpl
 
 diff --git a/models/repo/repo.go b/models/repo/repo.go
 index 5aae02c6d8..34d1bf55f6 100644
@@ -74,10 +77,10 @@ index 5aae02c6d8..34d1bf55f6 100644
  
  // DescriptionHTML does special handles to description and return HTML string.
 diff --git a/options/locale/locale_en-US.ini b/options/locale/locale_en-US.ini
-index b9aae48f86..b885ddfd99 100644
+index 2eb5779aca..24cf2dc9ec 100644
 --- a/options/locale/locale_en-US.ini
 +++ b/options/locale/locale_en-US.ini
-@@ -1336,9 +1336,9 @@ editor.cannot_edit_non_text_files = Binary files cannot be edited in the web int
+@@ -1348,9 +1348,9 @@ editor.cannot_edit_non_text_files = Binary files cannot be edited in the web int
  editor.edit_this_file = Edit File
  editor.this_file_locked = File is locked
  editor.must_be_on_a_branch = You must be on a branch to make or propose changes to this file.
@@ -88,7 +91,7 @@ index b9aae48f86..b885ddfd99 100644
  editor.file_delete_success = File "%s" has been deleted.
  editor.name_your_file = Name your file…
  editor.filename_help = Add a directory by typing its name followed by a slash ('/'). Remove a directory by typing backspace at the beginning of the input field.
-@@ -1396,6 +1396,15 @@ editor.user_no_push_to_branch = User cannot push to branch
+@@ -1408,6 +1408,15 @@ editor.user_no_push_to_branch = User cannot push to branch
  editor.require_signed_commit = Branch requires a signed commit
  editor.cherry_pick = Cherry-pick %s onto:
  editor.revert = Revert %s onto:
@@ -105,7 +108,7 @@ index b9aae48f86..b885ddfd99 100644
  commits.desc = Browse source code change history.
  commits.commits = Commits
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index b98863b418..7b7e2ff4db 100644
+index 23e51161b8..214dd476e5 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
 @@ -458,7 +458,7 @@ func reqRepoWriter(unitTypes ...unit.Type) func(ctx *context.APIContext) {
@@ -532,10 +535,15 @@ index 89bf8f309c..c54648c51e 100644
  }
  
 diff --git a/routers/web/repo/fork.go b/routers/web/repo/fork.go
-index 79f033659b..699e67bd09 100644
+index 9f5cda10c2..3488d83e3e 100644
 --- a/routers/web/repo/fork.go
 +++ b/routers/web/repo/fork.go
-@@ -155,17 +155,30 @@ func ForkPost(ctx *context.Context) {
+@@ -151,21 +151,34 @@ func ForkPost(ctx *context.Context) {
+ 	ctx.Data["ContextUser"] = ctxUser
+ 
+ 	if ctx.HasError() {
+-		ctx.JSONError(ctx.GetErrMsg())
++		ctx.HTML(http.StatusOK, tplFork)
  		return
  	}
  
@@ -558,7 +566,7 @@ index 79f033659b..699e67bd09 100644
 +	traverseParentRepo := opts.BaseRepo
  	for {
 -		if !repository.CanUserForkBetweenOwners(ctxUser.ID, traverseParentRepo.OwnerID) {
--			ctx.RenderWithErr(ctx.Tr("repo.settings.new_owner_has_same_repo"), tplFork, &form)
+-			ctx.JSONError(ctx.Tr("repo.settings.new_owner_has_same_repo"))
 -			return
 +		if !repository.CanUserForkBetweenOwners(user.ID, traverseParentRepo.OwnerID) {
 +			ctx.RenderWithErr(ctx.Tr("repo.settings.new_owner_has_same_repo"), tpl, form)
@@ -567,13 +575,13 @@ index 79f033659b..699e67bd09 100644
 -		repo := repo_model.GetForkedRepo(ctx, ctxUser.ID, traverseParentRepo.ID)
 +		repo := repo_model.GetForkedRepo(ctx, user.ID, traverseParentRepo.ID)
  		if repo != nil {
--			ctx.Redirect(ctxUser.HomeLink() + "/" + url.PathEscape(repo.Name))
+-			ctx.JSONRedirect(ctxUser.HomeLink() + "/" + url.PathEscape(repo.Name))
 -			return
 +			return repo
  		}
  		if !traverseParentRepo.IsFork {
  			break
-@@ -173,60 +186,55 @@ func ForkPost(ctx *context.Context) {
+@@ -173,60 +186,54 @@ func ForkPost(ctx *context.Context) {
  		traverseParentRepo, err = repo_model.GetRepositoryByID(ctx, traverseParentRepo.ForkID)
  		if err != nil {
  			ctx.ServerError("GetRepositoryByID", err)
@@ -582,7 +590,7 @@ index 79f033659b..699e67bd09 100644
  		}
  	}
  
- 	// Check if user is allowed to create repo's on the organization.
+-	// Check if user is allowed to create repo's on the organization.
 -	if ctxUser.IsOrganization() {
 -		isAllowedToFork, err := organization.OrgFromUser(ctxUser).CanCreateOrgRepo(ctx, ctx.Doer.ID)
 +	if user.IsOrganization() {
@@ -612,34 +620,34 @@ index 79f033659b..699e67bd09 100644
 -			maxCreationLimit := ctxUser.MaxCreationLimit()
 +			maxCreationLimit := user.MaxCreationLimit()
  			msg := ctx.TrN(maxCreationLimit, "repo.form.reach_limit_of_creation_1", "repo.form.reach_limit_of_creation_n", maxCreationLimit)
--			ctx.RenderWithErr(msg, tplFork, &form)
+-			ctx.JSONError(msg)
 +			ctx.RenderWithErr(msg, tpl, form)
  		case repo_model.IsErrRepoAlreadyExist(err):
--			ctx.RenderWithErr(ctx.Tr("repo.settings.new_owner_has_same_repo"), tplFork, &form)
+-			ctx.JSONError(ctx.Tr("repo.settings.new_owner_has_same_repo"))
 +			ctx.RenderWithErr(ctx.Tr("repo.settings.new_owner_has_same_repo"), tpl, form)
  		case repo_model.IsErrRepoFilesAlreadyExist(err):
  			switch {
  			case ctx.IsUserSiteAdmin() || (setting.Repository.AllowAdoptionOfUnadoptedRepositories && setting.Repository.AllowDeleteOfUnadoptedRepositories):
--				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist.adopt_or_delete"), tplFork, form)
+-				ctx.JSONError(ctx.Tr("form.repository_files_already_exist.adopt_or_delete"))
 +				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist.adopt_or_delete"), tpl, form)
  			case setting.Repository.AllowAdoptionOfUnadoptedRepositories:
--				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist.adopt"), tplFork, form)
+-				ctx.JSONError(ctx.Tr("form.repository_files_already_exist.adopt"))
 +				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist.adopt"), tpl, form)
  			case setting.Repository.AllowDeleteOfUnadoptedRepositories:
--				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist.delete"), tplFork, form)
+-				ctx.JSONError(ctx.Tr("form.repository_files_already_exist.delete"))
 +				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist.delete"), tpl, form)
  			default:
--				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist"), tplFork, form)
+-				ctx.JSONError(ctx.Tr("form.repository_files_already_exist"))
 +				ctx.RenderWithErr(ctx.Tr("form.repository_files_already_exist"), tpl, form)
  			}
  		case db.IsErrNameReserved(err):
--			ctx.RenderWithErr(ctx.Tr("repo.form.name_reserved", err.(db.ErrNameReserved).Name), tplFork, &form)
+-			ctx.JSONError(ctx.Tr("repo.form.name_reserved", err.(db.ErrNameReserved).Name))
 +			ctx.RenderWithErr(ctx.Tr("repo.form.name_reserved", err.(db.ErrNameReserved).Name), tpl, form)
  		case db.IsErrNamePatternNotAllowed(err):
--			ctx.RenderWithErr(ctx.Tr("repo.form.name_pattern_not_allowed", err.(db.ErrNamePatternNotAllowed).Pattern), tplFork, &form)
+-			ctx.JSONError(ctx.Tr("repo.form.name_pattern_not_allowed", err.(db.ErrNamePatternNotAllowed).Pattern))
 +			ctx.RenderWithErr(ctx.Tr("repo.form.name_pattern_not_allowed", err.(db.ErrNamePatternNotAllowed).Pattern), tpl, form)
  		case errors.Is(err, user_model.ErrBlockedUser):
--			ctx.RenderWithErr(ctx.Tr("repo.fork.blocked_user"), tplFork, form)
+-			ctx.JSONError(ctx.Tr("repo.fork.blocked_user"))
 +			ctx.RenderWithErr(ctx.Tr("repo.fork.blocked_user"), tpl, form)
  		default:
  			ctx.ServerError("ForkPost", err)
@@ -649,7 +657,7 @@ index 79f033659b..699e67bd09 100644
  	}
  
 -	log.Trace("Repository forked[%d]: %s/%s", forkRepo.ID, ctxUser.Name, repo.Name)
--	ctx.Redirect(ctxUser.HomeLink() + "/" + url.PathEscape(repo.Name))
+-	ctx.JSONRedirect(ctxUser.HomeLink() + "/" + url.PathEscape(repo.Name))
 +	log.Trace("Repository forked[%d]: %s/%s", opts.BaseRepo.ID, user.Name, repo.Name)
 +	return repo
  }
@@ -930,10 +938,10 @@ index ca346b7e6c..f673f0469a 100644
  		ctx.Redirect(ctx.Repo.RepoLink + "/commit/" + fileResponse.Commit.SHA)
  	}
 diff --git a/routers/web/repo/pull.go b/routers/web/repo/pull.go
-index 86f4f0167f..5af5b29376 100644
+index 093f1ecaf8..246a13b505 100644
 --- a/routers/web/repo/pull.go
 +++ b/routers/web/repo/pull.go
-@@ -910,6 +910,7 @@ func viewPullFiles(ctx *context.Context, specifiedStartCommit, specifiedEndCommi
+@@ -916,6 +916,7 @@ func viewPullFiles(ctx *context.Context, specifiedStartCommit, specifiedEndCommi
  				}
  
  				if perm.CanWrite(unit.TypeCode) || issues_model.CanMaintainerWriteToBranch(ctx, perm, pull.HeadBranch, ctx.Doer) {
@@ -1039,7 +1047,7 @@ index 48fa47d738..4d6557f652 100644
  	if ctx.Repo.Commit == nil || ctx.Repo.Repository.IsEmpty || ctx.Repo.Repository.IsBroken() {
  		// empty or broken repositories need to be handled differently
 diff --git a/routers/web/repo/view_readme.go b/routers/web/repo/view_readme.go
-index 459cf0a616..c5984d2a30 100644
+index 7af6ad450e..06bd574efc 100644
 --- a/routers/web/repo/view_readme.go
 +++ b/routers/web/repo/view_readme.go
 @@ -212,7 +212,18 @@ func prepareToRenderReadmeFile(ctx *context.Context, subfolder string, readmeFil
@@ -1064,10 +1072,10 @@ index 459cf0a616..c5984d2a30 100644
  	}
  }
 diff --git a/routers/web/web.go b/routers/web/web.go
-index bd850baec0..bdca68993d 100644
+index 385d15dc5e..08ae4c5bf5 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -1321,18 +1321,22 @@ func registerWebRoutes(m *web.Router) {
+@@ -1333,18 +1333,22 @@ func registerWebRoutes(m *web.Router) {
  					Post(web.Bind(forms.EditRepoFileForm{}), repo.NewFilePost)
  				m.Combo("/_delete/*").Get(repo.DeleteFile).
  					Post(web.Bind(forms.DeleteRepoFileForm{}), repo.DeleteFilePost)
@@ -1132,9 +1140,8 @@ index 61841aa90b..10c802c8d7 100644
 +	}
 +
 +	return issues_model.CanMaintainerWriteToBranch(ctx, permission, branch, user)
- }
- 
--// CanEnableEditor returns true if repository is editable and user has proper access level.
++}
++
 +// RepositoryNotEditableMessage explains why a repository can not be edited by the user
 +type RepositoryNotEditableMessage struct {
 +	Reason     string
@@ -1185,8 +1192,9 @@ index 61841aa90b..10c802c8d7 100644
 +	}
 +
 +	return userRepo, RepositoryNotEditableMessage{}, nil
-+}
-+
+ }
+ 
+-// CanEnableEditor returns true if repository is editable and user has proper access level.
 +// CanEnableEditor returns true if the web editor can be enabled for this repository,
 +// either by directly writing to the repository or to a user fork.
  func (r *Repository) CanEnableEditor(ctx context.Context, user *user_model.User) bool {
@@ -1291,10 +1299,10 @@ index a2827e516a..6bd1c9cef0 100644
  // \_   ___ \|  |__   __________________ ___.__. \______   \__| ____ |  | __
  // /    \  \/|  |  \_/ __ \_  __ \_  __ <   |  |  |     ___/  |/ ___\|  |/ /
 diff --git a/templates/repo/diff/box.tmpl b/templates/repo/diff/box.tmpl
-index 9f0689d61f..3029ca407e 100644
+index f8d0804bf0..abd510e93b 100644
 --- a/templates/repo/diff/box.tmpl
 +++ b/templates/repo/diff/box.tmpl
-@@ -147,7 +147,7 @@
+@@ -148,7 +148,7 @@
  												<a class="item" rel="nofollow" href="{{$.BeforeSourcePath}}/{{PathEscapeSegments .Name}}">{{ctx.Locale.Tr "repo.diff.view_file"}}</a>
  											{{else}}
  												<a class="item" rel="nofollow" href="{{$.SourcePath}}/{{PathEscapeSegments .Name}}">{{ctx.Locale.Tr "repo.diff.view_file"}}</a>
@@ -1442,7 +1450,7 @@ index 292a2f878c..ff122ca065 100644
  			{{svg "octicon-triangle-down" 14 "dropdown icon"}}
  			<div class="menu">
 diff --git a/templates/repo/view_file.tmpl b/templates/repo/view_file.tmpl
-index dc789a2648..c143333833 100644
+index b49818c6b7..544819cf32 100644
 --- a/templates/repo/view_file.tmpl
 +++ b/templates/repo/view_file.tmpl
 @@ -61,7 +61,7 @@
@@ -1511,7 +1519,7 @@ index a5936d86de..3c54228a13 100644
  	req := NewRequest(t, "GET", newURL)
  	resp := session.MakeRequest(t, req, http.StatusOK)
  
-@@ -46,72 +60,99 @@ func testCreateFile(t *testing.T, session *TestSession, user, repo, branch, file
+@@ -46,70 +60,97 @@ func testCreateFile(t *testing.T, session *TestSession, user, repo, branch, file
  
  	// Save new file to master branch
  	req = NewRequestWithValues(t, "POST", newURL, map[string]string{
@@ -1548,7 +1556,10 @@ index a5936d86de..3c54228a13 100644
  func TestCreateFileOnProtectedBranch(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, u *url.URL) {
  		session := loginUser(t, "user2")
--
++		testCreateFileOnProtectedBranch(t, session, "user2", "user2", "repo1", "master", "master", "direct")
++	})
++}
+ 
 -		csrf := GetUserCSRFToken(t, session)
 -		// Change master branch to protected
 -		req := NewRequestWithValues(t, "POST", "/user2/repo1/settings/branches/edit", map[string]string{
@@ -1560,49 +1571,6 @@ index a5936d86de..3c54228a13 100644
 -		// Check if master branch has been locked successfully
 -		flashMsg := session.GetCookieFlashMessage()
 -		assert.Equal(t, `Branch protection for rule "master" has been updated.`, flashMsg.SuccessMsg)
--
--		// Request editor page
--		req = NewRequest(t, "GET", "/user2/repo1/_new/master/")
--		resp := session.MakeRequest(t, req, http.StatusOK)
--
--		doc := NewHTMLParser(t, resp.Body)
--		lastCommit := doc.GetInputValueByName("last_commit")
--		assert.NotEmpty(t, lastCommit)
--
--		// Save new file to master branch
--		req = NewRequestWithValues(t, "POST", "/user2/repo1/_new/master/", map[string]string{
--			"_csrf":         doc.GetCSRF(),
--			"last_commit":   lastCommit,
--			"tree_path":     "test.txt",
--			"content":       "Content",
--			"commit_choice": "direct",
--		})
--
--		resp = session.MakeRequest(t, req, http.StatusOK)
--		// Check body for error message
--		assert.Contains(t, resp.Body.String(), "Cannot commit to protected branch &#34;master&#34;.")
--
--		// remove the protected branch
--		csrf = GetUserCSRFToken(t, session)
--
--		// Change master branch to protected
--		req = NewRequestWithValues(t, "POST", "/user2/repo1/settings/branches/1/delete", map[string]string{
--			"_csrf": csrf,
--		})
--
--		resp = session.MakeRequest(t, req, http.StatusOK)
--
--		res := make(map[string]string)
--		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
--		assert.Equal(t, "/user2/repo1/settings/branches", res["redirect"])
--
--		// Check if master branch has been locked successfully
--		flashMsg = session.GetCookieFlashMessage()
--		assert.Equal(t, `Removing branch protection rule "1" failed.`, flashMsg.ErrorMsg)
-+		testCreateFileOnProtectedBranch(t, session, "user2", "user2", "repo1", "master", "master", "direct")
- 	})
- }
- 
 +func TestCreateFileOnProtectedBranchFork(t *testing.T) {
 +	onGiteaRun(t, func(t *testing.T, u *url.URL) {
 +		session := loginUser(t, "user4")
@@ -1610,7 +1578,10 @@ index a5936d86de..3c54228a13 100644
 +		testCreateFileOnProtectedBranch(t, session, "user4", "user2", "repo1", "master", "feature/test", "commit-to-new-branch")
 +	})
 +}
-+
+ 
+-		// Request editor page
+-		req = NewRequest(t, "GET", "/user2/repo1/_new/master/")
+-		resp := session.MakeRequest(t, req, http.StatusOK)
 +func testCreateFileOnProtectedBranch(t *testing.T, session *TestSession, user, owner, repo, branch, targetBranch, commitChoice string) {
 +	csrf := GetUserCSRFToken(t, session)
 +	// Change target branch to protected
@@ -1623,15 +1594,29 @@ index a5936d86de..3c54228a13 100644
 +	// Check if target branch has been locked successfully
 +	flashMsg := session.GetCookieFlashMessage()
 +	assert.Equal(t, fmt.Sprintf(`Branch protection for rule "%s" has been updated.`, targetBranch), flashMsg.SuccessMsg)
-+
+ 
+-		doc := NewHTMLParser(t, resp.Body)
+-		lastCommit := doc.GetInputValueByName("last_commit")
+-		assert.NotEmpty(t, lastCommit)
 +	// Request editor page
 +	req = NewRequest(t, "GET", path.Join(owner, repo, "_new", branch))
 +	resp := session.MakeRequest(t, req, http.StatusOK)
-+
+ 
+-		// Save new file to master branch
+-		req = NewRequestWithValues(t, "POST", "/user2/repo1/_new/master/", map[string]string{
+-			"_csrf":         doc.GetCSRF(),
+-			"last_commit":   lastCommit,
+-			"tree_path":     "test.txt",
+-			"content":       "Content",
+-			"commit_choice": "direct",
+-		})
 +	doc := NewHTMLParser(t, resp.Body)
 +	lastCommit := doc.GetInputValueByName("last_commit")
 +	assert.NotEmpty(t, lastCommit)
-+
+ 
+-		resp = session.MakeRequest(t, req, http.StatusOK)
+-		// Check body for error message
+-		assert.Contains(t, resp.Body.String(), "Cannot commit to protected branch &#34;master&#34;.")
 +	// Save new file to target branch
 +	req = NewRequestWithValues(t, "POST", path.Join(owner, repo, "_new", branch), map[string]string{
 +		"_csrf":           doc.GetCSRF(),
@@ -1641,11 +1626,17 @@ index a5936d86de..3c54228a13 100644
 +		"commit_choice":   commitChoice,
 +		"new_branch_name": targetBranch,
 +	})
-+
+ 
+-		// remove the protected branch
+-		csrf = GetUserCSRFToken(t, session)
 +	resp = session.MakeRequest(t, req, http.StatusOK)
 +	// Check body for error message
 +	assert.Contains(t, resp.Body.String(), fmt.Sprintf("Cannot commit to protected branch &#34;%s&#34;.", targetBranch))
-+
+ 
+-		// Change master branch to protected
+-		req = NewRequestWithValues(t, "POST", "/user2/repo1/settings/branches/1/delete", map[string]string{
+-			"_csrf": csrf,
+-		})
 +	// remove the protected branch
 +	csrf = GetUserCSRFToken(t, session)
 +
@@ -1653,21 +1644,27 @@ index a5936d86de..3c54228a13 100644
 +	req = NewRequestWithValues(t, "POST", path.Join(user, repo, "settings", "branches", "1", "delete"), map[string]string{
 +		"_csrf": csrf,
 +	})
-+
+ 
+-		resp = session.MakeRequest(t, req, http.StatusOK)
 +	resp = session.MakeRequest(t, req, http.StatusOK)
-+
+ 
+-		res := make(map[string]string)
+-		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
+-		assert.Equal(t, "/user2/repo1/settings/branches", res["redirect"])
 +	res := make(map[string]string)
 +	assert.NoError(t, json.NewDecoder(resp.Body).Decode(&res))
 +	assert.Equal(t, "/"+path.Join(user, repo, "settings", "branches"), res["redirect"])
-+
+ 
+-		// Check if master branch has been locked successfully
+-		flashMsg = session.GetCookieFlashMessage()
+-		assert.Equal(t, `Removing branch protection rule "1" failed.`, flashMsg.ErrorMsg)
+-	})
 +	// Check if target branch has been locked successfully
 +	flashMsg = session.GetCookieFlashMessage()
 +	assert.Equal(t, `Removing branch protection rule "1" failed.`, flashMsg.ErrorMsg)
-+}
-+
+ }
+ 
  func testEditFile(t *testing.T, session *TestSession, user, repo, branch, filePath, newContent string) *httptest.ResponseRecorder {
- 	// Get to the 'edit this file' page
- 	req := NewRequest(t, "GET", path.Join(user, repo, "_edit", branch, filePath))
 @@ -141,9 +182,9 @@ func testEditFile(t *testing.T, session *TestSession, user, repo, branch, filePa
  	return resp
  }
@@ -1969,10 +1966,10 @@ index 86bdd1b9e3..c29d2001ad 100644
  		prURL := test.RedirectURL(resp)
  
 diff --git a/tests/integration/pull_merge_test.go b/tests/integration/pull_merge_test.go
-index cf50d5e639..3080f484ce 100644
+index b642f0682f..bf0f80294c 100644
 --- a/tests/integration/pull_merge_test.go
 +++ b/tests/integration/pull_merge_test.go
-@@ -180,7 +180,7 @@ func TestPullCleanUpAfterMerge(t *testing.T) {
+@@ -181,7 +181,7 @@ func TestPullCleanUpAfterMerge(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
  		testRepoFork(t, session, "user2", "repo1", "user1", "repo1", "")
@@ -1981,7 +1978,7 @@ index cf50d5e639..3080f484ce 100644
  
  		resp := testPullCreate(t, session, "user1", "repo1", false, "master", "feature/test", "This is a pull title")
  
-@@ -234,8 +234,8 @@ func TestCantMergeConflict(t *testing.T) {
+@@ -235,8 +235,8 @@ func TestCantMergeConflict(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
  		testRepoFork(t, session, "user2", "repo1", "user1", "repo1", "")
@@ -1992,7 +1989,7 @@ index cf50d5e639..3080f484ce 100644
  
  		// Use API to create a conflicting pr
  		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
-@@ -280,7 +280,7 @@ func TestCantMergeUnrelated(t *testing.T) {
+@@ -281,7 +281,7 @@ func TestCantMergeUnrelated(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
  		testRepoFork(t, session, "user2", "repo1", "user1", "repo1", "")
@@ -2001,7 +1998,7 @@ index cf50d5e639..3080f484ce 100644
  
  		// Now we want to create a commit on a branch that is totally unrelated to our current head
  		// Drop down to pure code at this point
-@@ -343,7 +343,7 @@ func TestCantMergeUnrelated(t *testing.T) {
+@@ -344,7 +344,7 @@ func TestCantMergeUnrelated(t *testing.T) {
  		_, _, err = git.NewCommand("branch", "unrelated").AddDynamicArguments(commitSha).RunStdString(git.DefaultContext, &git.RunOpts{Dir: path})
  		assert.NoError(t, err)
  
@@ -2010,7 +2007,7 @@ index cf50d5e639..3080f484ce 100644
  
  		// Use API to create a conflicting pr
  		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
-@@ -375,7 +375,7 @@ func TestFastForwardOnlyMerge(t *testing.T) {
+@@ -376,7 +376,7 @@ func TestFastForwardOnlyMerge(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
  		testRepoFork(t, session, "user2", "repo1", "user1", "repo1", "")
@@ -2019,7 +2016,7 @@ index cf50d5e639..3080f484ce 100644
  
  		// Use API to create a pr from update to master
  		token := getTokenForLoggedInUser(t, session, auth_model.AccessTokenScopeWriteRepository)
-@@ -416,7 +416,7 @@ func TestCantFastForwardOnlyMergeDiverging(t *testing.T) {
+@@ -417,7 +417,7 @@ func TestCantFastForwardOnlyMergeDiverging(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
  		testRepoFork(t, session, "user2", "repo1", "user1", "repo1", "")
@@ -2028,7 +2025,7 @@ index cf50d5e639..3080f484ce 100644
  		testEditFile(t, session, "user1", "repo1", "master", "README.md", "Hello, World 2\n")
  
  		// Use API to create a pr from diverging to update
-@@ -538,9 +538,9 @@ func TestConflictChecking(t *testing.T) {
+@@ -539,9 +539,9 @@ func TestConflictChecking(t *testing.T) {
  func TestPullRetargetChildOnBranchDelete(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
@@ -2040,7 +2037,7 @@ index cf50d5e639..3080f484ce 100644
  
  		respBasePR := testPullCreate(t, session, "user2", "repo1", true, "master", "base-pr", "Base Pull Request")
  		elemBasePR := strings.Split(test.RedirectURL(respBasePR), "/")
-@@ -573,8 +573,8 @@ func TestPullDontRetargetChildOnWrongRepo(t *testing.T) {
+@@ -574,8 +574,8 @@ func TestPullDontRetargetChildOnWrongRepo(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user1")
  		testRepoFork(t, session, "user2", "repo1", "user1", "repo1", "")
@@ -2051,7 +2048,7 @@ index cf50d5e639..3080f484ce 100644
  
  		respBasePR := testPullCreate(t, session, "user1", "repo1", false, "master", "base-pr", "Base Pull Request")
  		elemBasePR := strings.Split(test.RedirectURL(respBasePR), "/")
-@@ -610,7 +610,7 @@ func TestPullRequestMergedWithNoPermissionDeleteBranch(t *testing.T) {
+@@ -611,7 +611,7 @@ func TestPullRequestMergedWithNoPermissionDeleteBranch(t *testing.T) {
  	onGiteaRun(t, func(t *testing.T, giteaURL *url.URL) {
  		session := loginUser(t, "user4")
  		testRepoFork(t, session, "user2", "repo1", "user4", "repo1", "")
@@ -2136,3 +2133,6 @@ index 3ccc34f20f..ac742ab172 100644
  
  		// 3. validate the webhook is triggered with right event
  		assert.Equal(t, "push", trigger)
+-- 
+2.49.0
+

@@ -1,7 +1,7 @@
-From ccb4ae19ff4f2c6dd0023623cae96afc9a7a7b17 Mon Sep 17 00:00:00 2001
+From eb775fa008cad72b3cd3963b4077010aea7033a4 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:05:47 +0200
-Subject: [PATCH 09/17] BLENDER: Allow non-local users to be renamed
+Subject: [PATCH 09/18] BLENDER: Allow non-local users to be renamed
 
 For Blender ID hook to do this.
 ---

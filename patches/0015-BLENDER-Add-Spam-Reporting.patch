@@ -1,7 +1,7 @@
-From 4470d5e4ec3482d1534d8e17d25ff59cd6ed730b Mon Sep 17 00:00:00 2001
+From 7ac978835d170d97edfdc5ebb0e7f245a0263ed3 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
-Subject: [PATCH 17/18] BLENDER: Add Spam Reporting
+Subject: [PATCH 15/18] BLENDER: Add Spam Reporting
 
 Spam reporting is available for trusted users (org members and admins) via a
 button on a spammer's profile page;
@@ -10,11 +10,11 @@ a new "pending spam reports" indicator in the header for admins.
 ---
  models/user/spamreport.go                     | 136 +++++++++++
  options/locale/locale_en-US.ini               |  22 ++
- routers/web/admin/spamreports.go              | 142 +++++++++++
+ routers/web/admin/spamreports.go              | 141 +++++++++++
  routers/web/shared/user/header.go             |  20 ++
  routers/web/user/setting/spamreport.go        |  43 ++++
  routers/web/web.go                            |  12 +
- services/user/spamreport.go                   | 226 ++++++++++++++++++
+ services/user/spamreport.go                   | 230 ++++++++++++++++++
  services/user/spamreport_test.go              |  93 +++++++
  templates/admin/navbar.tmpl                   |   5 +-
  templates/admin/spamreports/list.tmpl         |  88 +++++++
@@ -22,7 +22,7 @@ a new "pending spam reports" indicator in the header for admins.
  templates/shared/user/profile_big_avatar.tmpl |  17 ++
  .../shared/user/purgespammer_user_dialog.tmpl |  14 ++
  .../shared/user/spamreport_user_dialog.tmpl   |  14 ++
- 14 files changed, 838 insertions(+), 1 deletion(-)
+ 14 files changed, 841 insertions(+), 1 deletion(-)
  create mode 100644 models/user/spamreport.go
  create mode 100644 routers/web/admin/spamreports.go
  create mode 100644 routers/web/user/setting/spamreport.go
@@ -175,10 +175,10 @@ index 0000000000..a4390c9d4a
 +	return nil, err
 +}
 diff --git a/options/locale/locale_en-US.ini b/options/locale/locale_en-US.ini
-index 6b6f83a64b..7d6bc40a3d 100644
+index c026c818c5..2eb5779aca 100644
 --- a/options/locale/locale_en-US.ini
 +++ b/options/locale/locale_en-US.ini
-@@ -692,6 +692,18 @@ block.note.edit = Edit note
+@@ -710,6 +710,18 @@ block.note.edit = Edit note
  block.list = Blocked users
  block.list.none = You have not blocked any users.
  
@@ -197,7 +197,7 @@ index 6b6f83a64b..7d6bc40a3d 100644
  [settings]
  profile = Profile
  account = Account
-@@ -2899,6 +2911,7 @@ first_page = First
+@@ -2944,6 +2956,7 @@ first_page = First
  last_page = Last
  total = Total: %d
  settings = Admin Settings
@@ -205,7 +205,7 @@ index 6b6f83a64b..7d6bc40a3d 100644
  
  dashboard.new_version_hint = Gitea %s is now available, you are running %s. Check <a target="_blank" rel="noreferrer" href="%s">the blog</a> for more details.
  dashboard.statistic = Summary
-@@ -2986,6 +2999,7 @@ dashboard.sync_branch.started = Branches Sync started
+@@ -3031,6 +3044,7 @@ dashboard.sync_branch.started = Branches Sync started
  dashboard.sync_tag.started = Tags Sync started
  dashboard.rebuild_issue_indexer = Rebuild issue indexer
  dashboard.sync_repo_licenses = Sync repo licenses
@@ -213,7 +213,7 @@ index 6b6f83a64b..7d6bc40a3d 100644
  
  users.user_manage_panel = User Account Management
  users.new_account = Create User Account
-@@ -3062,6 +3076,14 @@ emails.delete_desc = Are you sure you want to delete this email address?
+@@ -3107,6 +3121,14 @@ emails.delete_desc = Are you sure you want to delete this email address?
  emails.deletion_success = The email address has been deleted.
  emails.delete_primary_email_error = You can not delete the primary email.
  
@@ -230,10 +230,10 @@ index 6b6f83a64b..7d6bc40a3d 100644
  orgs.teams = Teams
 diff --git a/routers/web/admin/spamreports.go b/routers/web/admin/spamreports.go
 new file mode 100644
-index 0000000000..6f2ce0c37a
+index 0000000000..16fbd615bd
 --- /dev/null
 +++ b/routers/web/admin/spamreports.go
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,141 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -247,15 +247,15 @@ index 0000000000..6f2ce0c37a
 +
 +	"code.gitea.io/gitea/models/db"
 +	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/base"
 +	"code.gitea.io/gitea/modules/log"
 +	"code.gitea.io/gitea/modules/setting"
++	"code.gitea.io/gitea/modules/templates"
 +	"code.gitea.io/gitea/services/context"
 +	user_service "code.gitea.io/gitea/services/user"
 +)
 +
 +const (
-+	tplSpamReports base.TplName = "admin/spamreports/list"
++	tplSpamReports templates.TplName = "admin/spamreports/list"
 +)
 +
 +// GetPendingSpamReports populates the counter for the header section displayed to site admins.
@@ -309,7 +309,6 @@ index 0000000000..6f2ce0c37a
 +	ctx.Data["SpamReports"] = spamReports
 +
 +	pager := context.NewPagination(int(count), opts.PageSize, opts.Page, 5)
-+	pager.SetDefaultParams(ctx)
 +	ctx.Data["Page"] = pager
 +
 +	statusCounts, err := user_model.GetSpamReportStatusCounts(ctx)
@@ -377,18 +376,18 @@ index 0000000000..6f2ce0c37a
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/shared/user/header.go b/routers/web/shared/user/header.go
-index 4cb0592b4b..e1c8b9608a 100644
+index 48a5d58ea4..6379549bef 100644
 --- a/routers/web/shared/user/header.go
 +++ b/routers/web/shared/user/header.go
-@@ -21,6 +21,7 @@ import (
- 	"code.gitea.io/gitea/modules/optional"
+@@ -22,6 +22,7 @@ import (
  	"code.gitea.io/gitea/modules/setting"
+ 	"code.gitea.io/gitea/modules/util"
  	"code.gitea.io/gitea/services/context"
 +	user_service "code.gitea.io/gitea/services/user"
  )
  
- // prepareContextForCommonProfile store some common data into context data for user's profile related pages (including the nav menu)
-@@ -90,6 +91,25 @@ func PrepareContextForProfileBigAvatar(ctx *context.Context) {
+ // prepareContextForProfileBigAvatar set the context for big avatar view on the profile page
+@@ -89,6 +90,25 @@ func prepareContextForProfileBigAvatar(ctx *context.Context) {
  		} else {
  			ctx.Data["UserBlocking"] = block
  		}
@@ -464,19 +463,19 @@ index 0000000000..254b54c56f
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index cf9959ecfe..b0cec470f2 100644
+index bd850baec0..385d15dc5e 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -284,6 +284,8 @@ func Routes() *web.Router {
- 	mid = append(mid, user.GetNotificationCount)
- 	mid = append(mid, repo.GetActiveStopwatch)
+@@ -282,6 +282,8 @@ func Routes() *web.Router {
+ 
  	mid = append(mid, goGet)
+ 	mid = append(mid, common.PageTmplFunctions)
 +	// BLENDER: spam reporting
 +	mid = append(mid, admin.GetPendingSpamReports)
  
  	webRoutes := web.NewRouter()
  	webRoutes.Use(mid...)
-@@ -676,6 +678,9 @@ func registerWebRoutes(m *web.Router) {
+@@ -682,6 +684,9 @@ func registerWebRoutes(m *web.Router) {
  			m.Get("", user_setting.BlockedUsers)
  			m.Post("", web.Bind(forms.BlockUserForm{}), user_setting.BlockedUsersPost)
  		})
@@ -486,7 +485,7 @@ index cf9959ecfe..b0cec470f2 100644
  	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled))
  
  	m.Group("/user", func() {
-@@ -748,6 +753,13 @@ func registerWebRoutes(m *web.Router) {
+@@ -755,6 +760,13 @@ func registerWebRoutes(m *web.Router) {
  			m.Post("/delete", admin.DeleteEmail)
  		})
  
@@ -502,10 +501,10 @@ index cf9959ecfe..b0cec470f2 100644
  		})
 diff --git a/services/user/spamreport.go b/services/user/spamreport.go
 new file mode 100644
-index 0000000000..d240546cc0
+index 0000000000..1d9c2d3236
 --- /dev/null
 +++ b/services/user/spamreport.go
-@@ -0,0 +1,226 @@
+@@ -0,0 +1,230 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -516,6 +515,7 @@ index 0000000000..d240546cc0
 +import (
 +	"context"
 +	"fmt"
++	"strconv"
 +
 +	"code.gitea.io/gitea/models/db"
 +	issues_model "code.gitea.io/gitea/models/issues"
@@ -675,7 +675,10 @@ index 0000000000..d240546cc0
 +	}
 +
 +	log.Info("Cleaning up issues and pulls by user %s", user.Name)
-+	issues, err := issues_model.Issues(ctx, &issues_model.IssuesOptions{PosterID: optional.Some(user.ID)})
++	issues, err := issues_model.Issues(ctx, &issues_model.IssuesOptions{
++			PosterID: strconv.FormatInt(user.ID, 10),
++	})
++
 +	if err != nil {
 +		return fmt.Errorf("failed to fetch IssueIDs: %w", err)
 +	}
@@ -832,7 +835,7 @@ index 0000000000..2f4ebcdc86
 +	assert.NoError(t, err)
 +}
 diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
-index 4116357d1d..235547ec0f 100644
+index 72584ec799..6cee23f79c 100644
 --- a/templates/admin/navbar.tmpl
 +++ b/templates/admin/navbar.tmpl
 @@ -13,7 +13,7 @@
@@ -949,10 +952,10 @@ index 0000000000..dc8240ba3f
 +
 +{{template "admin/layout_footer" .}}
 diff --git a/templates/base/head_navbar.tmpl b/templates/base/head_navbar.tmpl
-index 86d73a235d..dd4c015eb8 100644
+index 35e14d38d3..15f1b655e5 100644
 --- a/templates/base/head_navbar.tmpl
 +++ b/templates/base/head_navbar.tmpl
-@@ -91,6 +91,13 @@
+@@ -94,6 +94,13 @@
  			</a>
  			{{end}}
  
@@ -963,14 +966,14 @@ index 86d73a235d..dd4c015eb8 100644
 +				</strong>
 +			</a>
 +			{{end}}
- 			<a class="item not-mobile tw-mx-0" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}" aria-label="{{ctx.Locale.Tr "notifications"}}">
+ 			<a class="item not-mobile" href="{{AppSubUrl}}/notifications" data-tooltip-content="{{ctx.Locale.Tr "notifications"}}" aria-label="{{ctx.Locale.Tr "notifications"}}">
  				<div class="tw-relative">
  					{{svg "octicon-bell"}}
 diff --git a/templates/shared/user/profile_big_avatar.tmpl b/templates/shared/user/profile_big_avatar.tmpl
-index f04f1ef6c4..7c2b376b00 100644
+index 91f04e0b53..e322e4a788 100644
 --- a/templates/shared/user/profile_big_avatar.tmpl
 +++ b/templates/shared/user/profile_big_avatar.tmpl
-@@ -127,9 +127,26 @@
+@@ -130,9 +130,26 @@
  						<a class="muted" href="{{AppSubUrl}}/user/settings/blocked_users">{{ctx.Locale.Tr "user.block.unblock"}}</a>
  					{{end}}
  				</li>

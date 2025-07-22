@@ -344,9 +344,24 @@ func CheckCountQuotaExceeded(ctx context.Context, doer, owner *user_model.User) 
 
 // CheckSizeQuotaExceeded checks if the upload size is bigger than the allowed size
 // The check is skipped if the doer is an admin.
+// Additionally, uploads can be restricted to specific owners.
 func CheckSizeQuotaExceeded(ctx context.Context, doer, owner *user_model.User, packageType packages_model.Type, uploadSize int64) error {
 	if doer.IsAdmin {
 		return nil
+	}
+
+	// Restrict package uploads to specific owners
+	if setting.Packages.AllowedOwners != "" {
+		allowed := false
+		for _, allowedOwner := range strings.Split(setting.Packages.AllowedOwners, ",") {
+			if strings.TrimSpace(allowedOwner) == owner.Name {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return errors.New("package uploads are restricted to specific owners")
+		}
 	}
 
 	var typeSpecificSize int64

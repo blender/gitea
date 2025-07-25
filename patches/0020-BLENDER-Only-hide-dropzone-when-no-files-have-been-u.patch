@@ -1,30 +1,33 @@
-From 0aa0fc7bb07b675880b25bfc06b2d550db3733b0 Mon Sep 17 00:00:00 2001
+From 5f39cf65f776211caa3b8d799c6b941e578b6927 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@vanderbraak.nl>
 Date: Fri, 25 Jul 2025 01:53:31 +0200
 Subject: [PATCH] BLENDER: Only hide dropzone when no files have been uploaded
 
 Upstream patch at https://github.com/go-gitea/gitea/pull/35156
 ---
- web_src/js/features/repo-issue.ts | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ web_src/js/features/repo-issue.ts | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
 diff --git a/web_src/js/features/repo-issue.ts b/web_src/js/features/repo-issue.ts
-index bc7d4dee19..26d186b70e 100644
+index bc7d4dee19..08aed35ad8 100644
 --- a/web_src/js/features/repo-issue.ts
 +++ b/web_src/js/features/repo-issue.ts
-@@ -547,7 +547,11 @@ function initIssueTemplateCommentEditors(commentForm: HTMLFormElement) {
+@@ -547,7 +547,14 @@ function initIssueTemplateCommentEditors(commentForm: HTMLFormElement) {
        // deactivate all markdown editors
        showElem(commentForm.querySelectorAll('.combo-editor-dropzone .form-field-real'));
        hideElem(commentForm.querySelectorAll('.combo-editor-dropzone .combo-markdown-editor'));
 -      hideElem(commentForm.querySelectorAll('.combo-editor-dropzone .form-field-dropzone'));
 +      queryElems(commentForm, '.combo-editor-dropzone .form-field-dropzone', (dropzoneContainer) => {
-+        const dropzone = dropzoneContainer.closest('.combo-editor-dropzone')?.querySelector('.dropzone');
-+        const hasUploadedFiles = dropzone?.querySelector('.dz-preview') !== null;
-+        if (!hasUploadedFiles) hideElem(dropzoneContainer);
++        const dropzoneEl = dropzoneContainer.closest<HTMLElement>('.combo-editor-dropzone')?.querySelector<HTMLElement>('.dropzone');
++        const dzInstance = dropzoneEl?.dropzone;
++
++        if (dzInstance && dzInstance.files.length === 0) {
++          hideElem(dropzoneContainer);
++        }
 +      });
  
        // activate this markdown editor
        hideElem(fieldTextarea);
 -- 
-2.49.0
+2.49.1
 

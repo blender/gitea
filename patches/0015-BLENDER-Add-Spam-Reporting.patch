@@ -233,7 +233,7 @@ new file mode 100644
 index 0000000000..16fbd615bd
 --- /dev/null
 +++ b/routers/web/admin/spamreports.go
-@@ -0,0 +1,141 @@
+@@ -0,0 +1,150 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -308,15 +308,24 @@ index 0000000000..16fbd615bd
 +	ctx.Data["Total"] = count
 +	ctx.Data["SpamReports"] = spamReports
 +
-+	pager := context.NewPagination(int(count), opts.PageSize, opts.Page, 5)
-+	ctx.Data["Page"] = pager
-+
 +	statusCounts, err := user_model.GetSpamReportStatusCounts(ctx)
 +	if err != nil {
 +		ctx.ServerError("GetSpamReportStatusCounts", err)
 +		return
 +	}
 +	ctx.Data["StatusCounts"] = statusCounts
++
++       var pagerCount int
++       for _, sc := range statusCounts {
++		if sc.Status == filterStatus {
++			pagerCount = int(sc.Count)
++			break
++		}
++	}
++
++	pager := context.NewPagination(pagerCount, opts.PageSize, opts.Page, 5)
++	pager.AddParamFromRequest(ctx.Req)
++	ctx.Data["Page"] = pager
 +
 +	ctx.HTML(http.StatusOK, tplSpamReports)
 +}
@@ -676,7 +685,7 @@ index 0000000000..1d9c2d3236
 +
 +	log.Info("Cleaning up issues and pulls by user %s", user.Name)
 +	issues, err := issues_model.Issues(ctx, &issues_model.IssuesOptions{
-+			PosterID: strconv.FormatInt(user.ID, 10),
++		PosterID: strconv.FormatInt(user.ID, 10),
 +	})
 +
 +	if err != nil {

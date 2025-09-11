@@ -1,0 +1,45 @@
+{{template "user/settings/layout_head" (dict "ctxData" . "pageClass" "user settings contributor-agreements")}}
+	<div class="user-setting-content">
+		<h4 class="ui top attached header">
+			{{ctx.Locale.Tr "settings.contributor_agreements"}}
+		</h4>
+		<div class="ui attached segment">
+			<div class="ui list">
+				{{range .ContributorAgreements}}
+					<div class="item">
+						<div class="tw-mb-2">
+							<h4 class="ui header"><strong>{{.Slug}}</strong></h4>
+							{{if .SignedAt}}
+								<div class="text light-3">{{ctx.Locale.Tr "contributor_agreements.signed_at" (DateUtils.FullTime .SignedAt)}}</div>
+							{{end}}
+						</div>
+						<details>
+							<summary>
+								{{if not .SignedAt}}
+									{{ctx.Locale.Tr "contributor_agreements.view_and_sign"}}
+								{{else}}
+									{{ctx.Locale.Tr "contributor_agreements.view"}}
+								{{end}}
+							</summary>
+							<pre>{{.Content}}</pre>
+							{{if not .SignedAt}}
+								<form method="post" action="{{AppSubUrl}}/user/settings/contributor_agreements/{{.Slug}}/sign" class="ui form">
+									{{$.CsrfTokenHtml}}
+									<div class="field">
+										<div class="ui checkbox">
+											<label>{{ctx.Locale.Tr "contributor_agreements.confirm"}}</label>
+											<input type="checkbox" required name="confirm" />
+										</div>
+									</div>
+									<button class="ui primary button" type="submit">
+										{{ctx.Locale.Tr "contributor_agreements.sign"}}
+									</button>
+								</form>
+							{{end}}
+						</details>
+					</div>
+				{{end}}
+			</div>
+		</div>
+	</div>
+{{template "user/settings/layout_footer" .}}

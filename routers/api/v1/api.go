@@ -1020,6 +1020,8 @@ func Routes() *web.Router {
 				}, reqSelfOrAdmin(), reqBasicOrRevProxyAuth())
 
 				m.Get("/activities/feeds", user.ListUserActivityFeeds)
+				// BLENDER: contributor agreement
+				m.Get("/contributor-agreements/{slug}", user.CheckContributorAgreement)
 			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
 		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
 

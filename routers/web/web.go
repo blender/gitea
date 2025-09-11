@@ -687,6 +687,9 @@ func registerWebRoutes(m *web.Router) {
 
 		// BLENDER: spam reporting
 		m.Post("/spamreport", user_setting.SpamReportUserPost)
+		// BLENDER: contributor agreement
+		m.Get("/contributor_agreements", user_setting.ContributorAgreements)
+		m.Post("/contributor_agreements/{slug}/sign", user_setting.SignContributorAgreement)
 	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled, "EnableNotifyMail", setting.Service.EnableNotifyMail))
 
 	m.Group("/user", func() {

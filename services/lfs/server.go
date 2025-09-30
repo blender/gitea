@@ -20,6 +20,7 @@ import (
 
 	auth_model "gitea.dev/models/auth"
 	git_model "gitea.dev/models/git"
+	issues_model "gitea.dev/models/issues"
 	perm_model "gitea.dev/models/perm"
 	access_model "gitea.dev/models/perm/access"
 	repo_model "gitea.dev/models/repo"
@@ -573,7 +574,12 @@ func authenticate(ctx *context.Context, repository *repo_model.Repository, autho
 		return false
 	}
 
-	canAccess := perm.CanAccess(accessMode, unit.TypeCode)
+	var canAccess bool
+	if requireWrite {
+		canAccess = issues_model.CanMaintainerWriteToLFS(ctx, perm, repository.ID, ctx.Doer)
+	} else {
+		canAccess = perm.CanAccess(accessMode, unit.TypeCode)
+	}
 	// if it doesn't require sign-in and anonymous user has access, return true
 	// if the user is already signed in (for example: by session auth method), and the doer can access, return true
 	if canAccess && (!requireSigned || ctx.IsSigned) {

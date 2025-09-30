@@ -136,6 +136,42 @@ func canMaintainerWriteToBranch(ctx context.Context, headPerm access_model.Permi
 	return false, nil
 }
 
+// GetUnmergedPullRequestsWithAllowMaintainerEdit returns all pull requests that are open, have not been merged,
+// have allow edit by maintainer.
+func GetUnmergedPullRequestsWithAllowMaintainerEdit(ctx context.Context, repoID int64) (PullRequestList, error) {
+	prs := make([]*PullRequest, 0, 2)
+	sess := db.GetEngine(ctx).
+		Join("INNER", "issue", "issue.id = pull_request.issue_id").
+		Where("head_repo_id = ? AND allow_maintainer_edit = ? AND has_merged = ? AND issue.is_closed = ? AND flow = ?", repoID, true, false, false, PullRequestFlowGithub)
+	return prs, sess.Find(&prs)
+}
+
+// CanMaintainerWriteToLFS checks if a user can write LFS files to a repository,
+// either because they have direct write access, or because they are a maintainer
+// allowed to push to the branch of an open pull request whose head is this repository.
+func CanMaintainerWriteToLFS(ctx context.Context, p access_model.Permission, repoID int64, user *user_model.User) bool {
+	if p.CanWrite(unit.TypeCode) {
+		return true
+	}
+
+	prs, err := GetUnmergedPullRequestsWithAllowMaintainerEdit(ctx, repoID)
+	if err != nil {
+		log.Error("GetUnmergedPullRequestsWithAllowMaintainerEdit: %v", err)
+		return false
+	}
+
+	// Reuse the exact same permission checks as pushing to the PR branch. This verifies
+	// that the PR poster actually has write access to the head repo and that the doer
+	// (the maintainer) has write access to the base repo, avoiding granting LFS write
+	// access more broadly than git push would allow.
+	for _, pr := range prs {
+		if CanMaintainerWriteToBranch(ctx, p, pr.HeadBranch, user) {
+			return true
+		}
+	}
+	return false
+}
+
 // HasUnmergedPullRequestsByHeadInfo checks if there are open and not merged pull request
 // by given head information (repo and branch)
 func HasUnmergedPullRequestsByHeadInfo(ctx context.Context, repoID int64, branch string) (bool, error) {

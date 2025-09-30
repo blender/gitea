@@ -140,3 +140,62 @@ func testCanMaintainerWriteToBranch(t *testing.T) {
 		assert.True(t, doerCanWrite(baseRepo.Owner, anyUserPR)) // now the poster has the write permission
 	})
 }
+
+// BLENDER: test for the LFS maintainer-edit permission check. It must grant the
+// same access as pushing to the PR branch, in particular it must not let a
+// base-repo maintainer push LFS objects to a head repo whose PR poster does not
+// have write access there.
+func TestCanMaintainerWriteToLFS(t *testing.T) {
+	require.NoError(t, unittest.PrepareTestDatabase())
+	ctx := t.Context()
+
+	baseRepo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 10})
+	headRepo := unittest.AssertExistsAndLoadBean(t, &repo_model.Repository{ID: 11})
+	require.NoError(t, baseRepo.LoadOwner(ctx))
+	require.NoError(t, headRepo.LoadOwner(ctx))
+	// user is not a collaborator of the head repo (initially has no write there)
+	user := unittest.AssertExistsAndLoadBean(t, &user_model.User{ID: 2})
+
+	canWriteLFS := func(doer *user_model.User) bool {
+		doerPerm, err := access.GetDoerRepoPermission(ctx, headRepo, doer)
+		require.NoError(t, err)
+		return issues_model.CanMaintainerWriteToLFS(ctx, doerPerm, headRepo.ID, doer)
+	}
+
+	// a PR from a user who only has read access to the head repo
+	pr := &issues_model.PullRequest{
+		Issue: &issues_model.Issue{
+			RepoID:   baseRepo.ID,
+			PosterID: user.ID,
+		},
+		HeadRepoID: headRepo.ID,
+		BaseRepoID: baseRepo.ID,
+		HeadBranch: "lfs-pr-from-user",
+		BaseBranch: "master",
+	}
+	require.NoError(t, issues_model.NewPullRequest(ctx, baseRepo, pr.Issue, nil, nil, pr))
+
+	// direct write access to the head repo is always allowed
+	assert.True(t, canWriteLFS(headRepo.Owner))
+
+	// without an open allow-maintainer-edit PR, a base-repo maintainer has no LFS access
+	assert.False(t, canWriteLFS(baseRepo.Owner))
+	assert.False(t, canWriteLFS(user))
+
+	// enable allow-maintainer-edit on the PR
+	_, err := db.GetEngine(ctx).Where("id = ?", pr.ID).
+		Cols("allow_maintainer_edit").
+		Update(&issues_model.PullRequest{AllowMaintainerEdit: true})
+	require.NoError(t, err)
+
+	// the poster only has read access to the head repo, so the base-repo
+	// maintainer must NOT be able to push LFS to the head repo
+	assert.False(t, canWriteLFS(baseRepo.Owner))
+
+	// give the poster write access to the head repo
+	require.NoError(t, db.Insert(ctx, &repo_model.Collaboration{RepoID: headRepo.ID, UserID: user.ID, Mode: perm.AccessModeWrite}))
+	require.NoError(t, db.Insert(ctx, &access.Access{RepoID: headRepo.ID, UserID: user.ID, Mode: perm.AccessModeWrite}))
+
+	// now the poster can write to the head repo, so the base-repo maintainer may push LFS too
+	assert.True(t, canWriteLFS(baseRepo.Owner))
+}

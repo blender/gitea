@@ -1,0 +1,24 @@
+From fd751247f4c818c1a32662bc5fff87ce26d4521a Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Tue, 7 Oct 2025 15:02:05 +0200
+Subject: [PATCH] BLENDER: Add Git LFS for Git Hook scripts
+
+---
+ Dockerfile.rootless | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Dockerfile.rootless b/Dockerfile.rootless
+index 32a3ff259a..5818988383 100644
+--- a/Dockerfile.rootless
++++ b/Dockerfile.rootless
+@@ -50,6 +50,7 @@ RUN apk --no-cache add \
+     dumb-init \
+     gettext \
+     git \
++    git-lfs \
+     curl \
+     gnupg \
+     && rm -rf /var/cache/apk/*
+-- 
+2.49.1
+

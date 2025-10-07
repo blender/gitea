@@ -13,6 +13,7 @@ ARG CGO_EXTRA_CFLAGS
 RUN apk --no-cache add \
     build-base \
     git \
+    git-lfs \
     nodejs \
     npm \
     && rm -rf /var/cache/apk/*

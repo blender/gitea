@@ -1,0 +1,60 @@
+{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
+
+<div class="admin-setting-content">
+	<h4 class="ui top attached header">
+		{{ctx.Locale.Tr "admin.signed_contributor_agreements.panel"}}
+		<div class="ui right">
+			<a class="ui primary tiny button" href="/-/admin/signed_contributor_agreements/batch_sign">
+				{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign_button"}}
+			</a>
+		</div>
+	</h4>
+	<div class="ui attached segment">
+		<form class="ui form ignore-dirty flex-text-block">
+			<label>
+				{{ctx.Locale.Tr "admin.signed_contributor_agreements.search_user"}}
+				<input name="q" value="{{.Keyword}}" />
+			</label>
+			<label>
+				{{ctx.Locale.Tr "admin.signed_contributor_agreements.slug"}}
+				<select name="contributor_agreement_id">
+					<option value="">{{ctx.Locale.Tr "admin.signed_contributor_agreements.all_option"}}</option>
+					{{range .ContributorAgreements}}
+						<option value="{{.ID}}" {{if eq .ID $.ContributorAgreementID }}selected{{end}}>{{.Slug}}</option>
+					{{end}}
+				</select>
+			</label>
+			<button class="ui button tw-mt-4" type="submit">{{ctx.Locale.Tr "admin.signed_contributor_agreements.search_button"}}</button>
+		</form>
+	</div>
+	<div class="ui attached table segment">
+		<table class="ui very basic striped table unstackable">
+			<thead>
+				<tr>
+					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.user"}}</th>
+					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.signed_at"}}</th>
+					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.slug"}}</th>
+					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.comment"}}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{{range .SignedContributorAgreements}}
+					<tr>
+						<td>
+							<a href="{{AppSubUrl}}/{{(index $.UserMap .UserID).Name | PathEscape}}">
+								{{(index $.UserMap .UserID).Name}}
+							</a>
+							({{(index $.UserMap .UserID).Email}})
+						</td>
+						<td>{{DateUtils.AbsoluteShort .CreatedUnix}}</td>
+						<td>{{index $.ContributorAgreementsLookup .ContributorAgreementID}}</td>
+						<td>{{.Comment}}</td>
+					</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</div>
+	{{template "base/paginate" .}}
+</div>
+
+{{template "admin/layout_footer" .}}

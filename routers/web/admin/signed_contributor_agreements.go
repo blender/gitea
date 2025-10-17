@@ -183,10 +183,11 @@ func ContributorAgreementsBatchSignPost(ctx *context.Context) {
 	}
 
 	insertSCA := make([]*user_model.SignedContributorAgreement, len(userIDs))
+	commentWithPrefix := fmt.Sprintf("batch signed: %s", comment)
 	for i, userID := range userIDs {
 		insertSCA[i] = &user_model.SignedContributorAgreement{
 			ContributorAgreementID: contributorAgreementID,
-			Comment:                comment,
+			Comment:                commentWithPrefix,
 			UserID:                 userID,
 		}
 	}

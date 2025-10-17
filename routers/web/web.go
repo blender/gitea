@@ -770,6 +770,12 @@ func registerWebRoutes(m *web.Router) {
 		})
 		m.Post("/purge_spammer", admin.PurgeSpammerPost)
 
+		// BLENDER: contributor agreement
+		m.Group("/signed_contributor_agreements", func() {
+			m.Get("", admin.SignedContributorAgreements)
+			m.Combo("/batch_sign").Get(admin.ContributorAgreementsBatchSign).Post(admin.ContributorAgreementsBatchSignPost)
+		})
+
 		m.Group("/orgs", func() {
 			m.Get("", admin.Organizations)
 		})

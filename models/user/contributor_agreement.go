@@ -29,15 +29,27 @@ type SignedContributorAgreement struct {
 
 type FindSignedContributorAgreementsOptions struct {
 	db.ListOptions
-	UserID int64
+	ContributorAgreementID int64
+	UserID                 int64
+	UserIDs                []int64
 }
 
 func (opts *FindSignedContributorAgreementsOptions) ToConds() builder.Cond {
 	cond := builder.NewCond()
+	if opts.ContributorAgreementID != 0 {
+		cond = cond.And(builder.Eq{"contributor_agreement_id": opts.ContributorAgreementID})
+	}
 	if opts.UserID != 0 {
 		cond = cond.And(builder.Eq{"user_id": opts.UserID})
 	}
+	if opts.UserIDs != nil {
+		cond = cond.And(builder.In("user_id", opts.UserIDs))
+	}
 	return cond
+}
+
+func (opts *FindSignedContributorAgreementsOptions) ToOrders() string {
+	return "id DESC"
 }
 
 func init() {

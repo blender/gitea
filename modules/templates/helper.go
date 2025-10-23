@@ -38,6 +38,7 @@ func newFuncMapWebPage() template.FuncMap {
 		"HTMLFormat":   htmlFormat,
 		"QueryEscape":  queryEscape,
 		"QueryBuild":   QueryBuild,
+		"JSEscape":     jsEscapeSafe,
 		"SanitizeHTML": SanitizeHTML,
 
 		"PathEscape":         url.PathEscape,
@@ -163,6 +164,10 @@ func htmlFormat(s any, args ...any) template.HTML {
 		return htmlutil.HTMLFormat(v, args...)
 	}
 	panic(fmt.Sprintf("unexpected type %T", s))
+}
+
+func jsEscapeSafe(s string) template.HTML {
+	return template.HTML(template.JSEscapeString(s))
 }
 
 func queryEscape(s string) template.URL {

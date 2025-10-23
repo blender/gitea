@@ -41,4 +41,6 @@
   overflow: hidden;
   max-width: fit-content;
   max-height: fit-content;
+  float: right;
+  margin-left: 0.5em;
 }

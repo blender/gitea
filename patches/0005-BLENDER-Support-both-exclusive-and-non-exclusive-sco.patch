@@ -1,7 +1,7 @@
-From 8d377ac7641a58e37e8aae5a529bb7f84498c074 Mon Sep 17 00:00:00 2001
+From 72a38f673e937bf45f151d289e77e6843751fc09 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
-Subject: [PATCH 05/18] BLENDER: Support both exclusive and non-exclusive scope
+Subject: [PATCH 05/19] BLENDER: Support both exclusive and non-exclusive scope
  for labels
 
 ---
@@ -13,7 +13,7 @@ Subject: [PATCH 05/18] BLENDER: Support both exclusive and non-exclusive scope
  5 files changed, 29 insertions(+), 22 deletions(-)
 
 diff --git a/models/issues/label.go b/models/issues/label.go
-index cfbe100926..cb7726aa71 100644
+index 25d6f1303e..951cfdc1a6 100644
 --- a/models/issues/label.go
 +++ b/models/issues/label.go
 @@ -184,11 +184,8 @@ func (l *Label) BelongsToRepo() bool {
@@ -46,10 +46,10 @@ index cfbe100926..cb7726aa71 100644
  func NewLabel(ctx context.Context, l *Label) error {
  	color, err := label.NormalizeColor(l.Color)
 diff --git a/modules/templates/util_render.go b/modules/templates/util_render.go
-index 14655a53c3..97bbd7958c 100644
+index 1056c42643..5b4cabf6d8 100644
 --- a/modules/templates/util_render.go
 +++ b/modules/templates/util_render.go
-@@ -127,7 +127,7 @@ func (ut *RenderUtils) RenderLabel(label *issues_model.Label) template.HTML {
+@@ -142,7 +142,7 @@ func (ut *RenderUtils) renderLabelWithTag(label *issues_model.Label, tagName, ta
  	locale := ut.ctx.Value(translation.ContextKey).(translation.Locale)
  	var extraCSSClasses string
  	textColor := util.ContrastColor(label.Color)
@@ -113,7 +113,7 @@ index 04c3605a6a..f0bffcd155 100644
  				{{ctx.RenderUtils.RenderLabel .}}
  				<p class="tw-ml-auto">{{template "repo/issue/labels/label_archived" .}}</p>
 diff --git a/templates/repo/issue/sidebar/label_list.tmpl b/templates/repo/issue/sidebar/label_list.tmpl
-index ed514f6725..2b3255371a 100644
+index 15c8760d1a..75a66290b1 100644
 --- a/templates/repo/issue/sidebar/label_list.tmpl
 +++ b/templates/repo/issue/sidebar/label_list.tmpl
 @@ -19,23 +19,25 @@
@@ -149,5 +149,5 @@ index ed514f6725..2b3255371a 100644
  					{{end}}
  				</div>
 -- 
-2.49.0
+2.49.1
 

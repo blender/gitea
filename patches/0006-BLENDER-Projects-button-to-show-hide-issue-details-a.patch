@@ -1,20 +1,44 @@
-From 7992807ec7b449dd5d7fae49e0decc1f0b62804b Mon Sep 17 00:00:00 2001
+From f90678f8356c500fd05146920129889e1a9a3258 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
-Date: Fri, 10 May 2024 14:00:36 +0200
-Subject: [PATCH 06/18] BLENDER: Projects: button to show/hide issue details
+Date: Thu, 23 Oct 2025 20:18:11 +0200
+Subject: [PATCH 06/19] BLENDER: Projects: button to show/hide issue details
  and closed issue
 
 Both are off by default. This is implemented fully on the frontend, so
 all issues and their details are still always loaded.
 ---
+ modules/templates/helper.go       |  5 ++++
  templates/projects/view.tmpl      | 43 ++++++++++++++++++++++++++++++-
- templates/repo/issue/card.tmpl    | 25 ++++++++++--------
+ templates/repo/issue/card.tmpl    | 27 +++++++++----------
  web_src/css/features/projects.css |  8 ++++++
  web_src/css/repo/issue-card.css   |  2 ++
- 4 files changed, 66 insertions(+), 12 deletions(-)
+ 5 files changed, 71 insertions(+), 14 deletions(-)
 
+diff --git a/modules/templates/helper.go b/modules/templates/helper.go
+index e454bce4bd..ff3f7cfda1 100644
+--- a/modules/templates/helper.go
++++ b/modules/templates/helper.go
+@@ -40,6 +40,7 @@ func NewFuncMap() template.FuncMap {
+ 		"HTMLFormat":   htmlFormat,
+ 		"QueryEscape":  queryEscape,
+ 		"QueryBuild":   QueryBuild,
++		"JSEscape":     jsEscapeSafe,
+ 		"SanitizeHTML": SanitizeHTML,
+ 		"URLJoin":      util.URLJoin,
+ 		"DotEscape":    dotEscape,
+@@ -180,6 +181,10 @@ func htmlFormat(s any, args ...any) template.HTML {
+ 	panic(fmt.Sprintf("unexpected type %T", s))
+ }
+ 
++func jsEscapeSafe(s string) template.HTML {
++	return template.HTML(template.JSEscapeString(s))
++}
++
+ func queryEscape(s string) template.URL {
+ 	return template.URL(url.QueryEscape(s))
+ }
 diff --git a/templates/projects/view.tmpl b/templates/projects/view.tmpl
-index 7e89db0005..413f306585 100644
+index 21bc287643..7972bc298d 100644
 --- a/templates/projects/view.tmpl
 +++ b/templates/projects/view.tmpl
 @@ -17,6 +17,16 @@
@@ -34,7 +58,7 @@ index 7e89db0005..413f306585 100644
  		{{if $canWriteProject}}
  			<div class="ui compact mini menu">
  				<a class="item screen-full">
-@@ -112,7 +122,7 @@
+@@ -114,7 +124,7 @@
  				<div class="divider"{{if .Color}} style="color: {{ContrastColor .Color}} !important"{{end}}></div>
  				<div class="ui cards" data-url="{{$.Link}}/{{.ID}}" data-project="{{$.Project.ID}}" data-board="{{.ID}}" id="board_{{.ID}}">
  					{{range (index $.IssuesMap .ID)}}
@@ -43,7 +67,7 @@ index 7e89db0005..413f306585 100644
  							{{template "repo/issue/card" (dict "Issue" . "Page" $)}}
  						</div>
  					{{end}}
-@@ -122,6 +132,37 @@
+@@ -124,6 +134,37 @@
  	</div>
  </div>
  
@@ -82,7 +106,7 @@ index 7e89db0005..413f306585 100644
  <div class="ui small modal" id="project-column-modal-edit">
  	<div class="header">edit</div>
 diff --git a/templates/repo/issue/card.tmpl b/templates/repo/issue/card.tmpl
-index 41fe6cea8f..99d77f4adf 100644
+index 6dae49c455..f3398cd0fd 100644
 --- a/templates/repo/issue/card.tmpl
 +++ b/templates/repo/issue/card.tmpl
 @@ -10,6 +10,14 @@
@@ -127,7 +151,7 @@ index 41fe6cea8f..99d77f4adf 100644
  			<a href="{{.Repo.Link}}/pulls/{{.Index}}">
  				<span class="tw-m-0 text {{if .PullRequest.HasMerged}}purple{{else if .IsClosed}}red{{else}}green{{end}}">{{svg "octicon-git-merge" 16 "tw-mr-1 tw-align-middle"}}</span>
  				<span class="tw-align-middle">{{.Title}} <span class="text light grey">#{{.Index}}</span></span>
-@@ -54,25 +62,20 @@
+@@ -54,15 +62,15 @@
  		{{end}}
  		{{$tasks := .GetTasks}}
  		{{if gt $tasks 0}}
@@ -140,19 +164,23 @@ index 41fe6cea8f..99d77f4adf 100644
  	</div>
  
 -	{{if or .Labels .Assignees}}
+-	<div class="issue-card-bottom">
 +	{{if or .Labels}}
- 	<div class="issue-card-bottom">
--		<div class="labels-list">
-+		<div class="labels-list issue-card-details tw-hidden">
- 			{{range .Labels}}
- 				<a target="_blank" href="{{$.Issue.Repo.Link}}/issues?labels={{.ID}}">{{ctx.RenderUtils.RenderLabel .}}</a>
++	<div class="issue-card-bottom issue-card-details tw-hidden">
+ 		{{/* the labels container must always be present, to help the assignees list right-aligned */}}
+ 		<div class="issue-card-bottom-part labels-list">
+ 			{{range $label := .Labels}}
+@@ -71,13 +79,6 @@
+ 				{{ctx.RenderUtils.RenderLabelWithLink $label $link}}
  			{{end}}
  		</div>
--		<div class="issue-card-assignees">
+-		{{if .Assignees}}
+-		<div class="issue-card-bottom-part tw-justify-end">
 -			{{range .Assignees}}
--				<a target="_blank" href="{{.HomeLink}}" data-tooltip-content="{{ctx.Locale.Tr "repo.projects.column.assigned_to"}} {{.Name}}">{{ctx.AvatarUtils.Avatar . 28}}</a>
+-				<a target="_blank" href="{{.HomeLink}}" data-tooltip-content="{{ctx.Locale.Tr "repo.projects.column.assigned_to"}} {{.Name}}">{{ctx.AvatarUtils.Avatar . 24}}</a>
 -			{{end}}
 -		</div>
+-		{{end}}
  	</div>
  	{{end}}
  {{end}}
@@ -176,16 +204,16 @@ index 25cb530f85..bfffa31138 100644
    display: flex;
    flex-direction: column;
 diff --git a/web_src/css/repo/issue-card.css b/web_src/css/repo/issue-card.css
-index 27f3c2d554..cfce0cea1b 100644
+index 327919b1fe..1067b5c8f7 100644
 --- a/web_src/css/repo/issue-card.css
 +++ b/web_src/css/repo/issue-card.css
-@@ -38,4 +38,6 @@
-   gap: 0.25em;
-   justify-content: end;
-   flex-wrap: wrap;
+@@ -41,4 +41,6 @@
+   overflow: hidden;
+   max-width: fit-content;
+   max-height: fit-content;
 +  float: right;
 +  margin-left: 0.5em;
  }
 -- 
-2.49.0
+2.49.1
 

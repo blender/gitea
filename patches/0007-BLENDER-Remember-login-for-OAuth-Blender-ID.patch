@@ -1,7 +1,7 @@
-From 57208caa58f0313d3b00c8c1e6f6b74f1b040c4f Mon Sep 17 00:00:00 2001
+From f8ddd41b83ef4b40040317eef04c0613e43106ea Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:02 +0200
-Subject: [PATCH 07/18] BLENDER: Remember login for OAuth / Blender ID
+Subject: [PATCH 07/19] BLENDER: Remember login for OAuth / Blender ID
 
 Otherwise for some browsers, users have to login again for every session.
 ---
@@ -9,20 +9,20 @@ Otherwise for some browsers, users have to login again for every session.
  1 file changed, 13 insertions(+)
 
 diff --git a/routers/web/auth/oauth.go b/routers/web/auth/oauth.go
-index a13b987aab..0769c58fe9 100644
+index f1c155e78f..03457cb260 100644
 --- a/routers/web/auth/oauth.go
 +++ b/routers/web/auth/oauth.go
 @@ -21,7 +21,9 @@ import (
+ 	"code.gitea.io/gitea/modules/optional"
  	"code.gitea.io/gitea/modules/session"
  	"code.gitea.io/gitea/modules/setting"
- 	"code.gitea.io/gitea/modules/templates"
 +	"code.gitea.io/gitea/modules/timeutil"
  	"code.gitea.io/gitea/modules/web/middleware"
 +	auth_service "code.gitea.io/gitea/services/auth"
  	source_service "code.gitea.io/gitea/services/auth/source"
  	"code.gitea.io/gitea/services/auth/source/oauth2"
  	"code.gitea.io/gitea/services/context"
-@@ -368,6 +370,17 @@ func handleOAuth2SignIn(ctx *context.Context, source *auth.Source, u *user_model
+@@ -391,6 +393,17 @@ func handleOAuth2SignIn(ctx *context.Context, authSource *auth.Source, u *user_m
  			return
  		}
  
@@ -41,5 +41,5 @@ index a13b987aab..0769c58fe9 100644
  		ctx.Csrf.PrepareForSessionUser(ctx)
  
 -- 
-2.49.0
+2.49.1
 

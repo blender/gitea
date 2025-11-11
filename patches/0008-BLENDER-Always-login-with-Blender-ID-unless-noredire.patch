@@ -1,7 +1,7 @@
-From ef1b61c5449cc60d2b4064f35d7c0b1a15389c44 Mon Sep 17 00:00:00 2001
+From 04a64ad2fd956262eae28d1b5e68b1f7483395b1 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:49 +0200
-Subject: [PATCH 08/18] BLENDER: Always login with Blender ID, unless
+Subject: [PATCH 08/19] BLENDER: Always login with Blender ID, unless
  noredirect is specified
 
 ---
@@ -9,7 +9,7 @@ Subject: [PATCH 08/18] BLENDER: Always login with Blender ID, unless
  1 file changed, 24 insertions(+)
 
 diff --git a/routers/web/auth/auth.go b/routers/web/auth/auth.go
-index 87edbc357b..b98fad647a 100644
+index 2ccd1c71b5..2fadfc4b12 100644
 --- a/routers/web/auth/auth.go
 +++ b/routers/web/auth/auth.go
 @@ -164,6 +164,26 @@ func CheckAutoLogin(ctx *context.Context) bool {
@@ -51,5 +51,5 @@ index 87edbc357b..b98fad647a 100644
  		RedirectAfterLogin(ctx)
  		return
 -- 
-2.49.0
+2.49.1
 

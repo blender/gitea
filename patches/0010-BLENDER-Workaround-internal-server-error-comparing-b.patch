@@ -1,27 +1,35 @@
-From 1135661145009c00ba465cda56041120d758b308 Mon Sep 17 00:00:00 2001
+From e90a6e052aa00198a7dc316badab05e4ae989abc Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:07:25 +0200
-Subject: [PATCH 10/18] BLENDER: Workaround internal server error comparing
+Subject: [PATCH 10/19] BLENDER: Workaround internal server error comparing
  branches on some repos
 
 https://projects.blender.org/infrastructure/blender-projects-platform/issues/61
 
 And add trace log for investigation.
 ---
- modules/git/repo_compare.go | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ modules/git/repo_compare.go | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/modules/git/repo_compare.go b/modules/git/repo_compare.go
-index ff44506e13..b718ba6599 100644
+index 69a7314d5c..2efeb325e8 100644
 --- a/modules/git/repo_compare.go
 +++ b/modules/git/repo_compare.go
-@@ -39,9 +39,12 @@ func (repo *Repository) GetMergeBase(tmpRemote, base, head string) (string, stri
+@@ -18,6 +18,7 @@ import (
+ 	"strings"
+ 
+ 	"code.gitea.io/gitea/modules/git/gitcmd"
++	logger "code.gitea.io/gitea/modules/log"
+ )
+ 
+ // GetMergeBase checks and returns merge base of two branches and the reference used as base.
+@@ -29,9 +30,12 @@ func (repo *Repository) GetMergeBase(tmpRemote, base, head string) (string, stri
  	if tmpRemote != "origin" {
  		tmpBaseName := RemotePrefix + tmpRemote + "/tmp_" + base
  		// Fetch commit into a temporary branch in order to be able to handle commits and tags
--		_, _, err := NewCommand("fetch", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &RunOpts{Dir: repo.Path})
+-		_, _, err := gitcmd.NewCommand("fetch", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &gitcmd.RunOpts{Dir: repo.Path})
 +		// --no-write-commit-graph works around issue with commit-graph-chain.lock files that should not be there.
-+		_, _, err := NewCommand("fetch", "--no-write-commit-graph", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &RunOpts{Dir: repo.Path})
++		_, _, err := gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &gitcmd.RunOpts{Dir: repo.Path})
  		if err == nil {
  			base = tmpBaseName
 +		} else {
@@ -30,5 +38,5 @@ index ff44506e13..b718ba6599 100644
  	}
  
 -- 
-2.49.0
+2.49.1
 

@@ -1,7 +1,7 @@
-From 8510bf752a088b0bd57139667068db2f5050dae7 Mon Sep 17 00:00:00 2001
+From 398c8f75841d770d879c665cc2aa7f631e55fb19 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Thu, 12 Jun 2025 14:43:47 +0200
-Subject: [PATCH 17/18] BLENDER: Fine tune pages considered expensive
+Subject: [PATCH 17/19] BLENDER: Fine tune pages considered expensive
 
 ---
  routers/common/blockexpensive.go | 32 ++++++++++++++++----------------
@@ -57,5 +57,5 @@ index f52aa2b709..b0c3aee079 100644
  		if strings.HasPrefix(routePattern, path) {
  			return true
 -- 
-2.49.0
+2.49.1
 

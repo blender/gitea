@@ -1,14 +1,14 @@
-From ba357026c83f38e2f8349bd6c60aba14fb0f964a Mon Sep 17 00:00:00 2001
+From 9f2fcd6abbe2bf7ceaf207819a31763db2cd7dde Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 2 Apr 2025 17:11:01 +0200
-Subject: [PATCH 13/18] BLENDER: Fix RemoveUserBadges incorrect sql
+Subject: [PATCH 13/19] BLENDER: Fix RemoveUserBadges incorrect sql
 
 ---
  models/user/badge.go | 22 ++++++++++++++++------
  1 file changed, 16 insertions(+), 6 deletions(-)
 
 diff --git a/models/user/badge.go b/models/user/badge.go
-index 3ff3530a36..9f030c7019 100644
+index e475ceb748..e33819d820 100644
 --- a/models/user/badge.go
 +++ b/models/user/badge.go
 @@ -105,13 +105,23 @@ func RemoveUserBadge(ctx context.Context, u *User, badge *Badge) error {
@@ -42,5 +42,5 @@ index 3ff3530a36..9f030c7019 100644
  		return nil
  	})
 -- 
-2.49.0
+2.49.1
 

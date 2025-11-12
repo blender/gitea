@@ -1,0 +1,837 @@
+From 0b8a3104776e8dc71bbab11ff96b6eb3234727e5 Mon Sep 17 00:00:00 2001
+From: Oleg Komarov <oleg@blender.org>
+Date: Thu, 11 Sep 2025 16:02:36 +0200
+Subject: [PATCH] BLENDER: Contributor Agreement Support
+
+New models ContributorAgreement and SignedContributorAgreement are introduced.
+
+A new Settings > Contributor Agreements page is introduced.
+The page allows a user to review the text of existing contributor agreements
+and to sign any of them.
+
+A new /api/v1/users/{username}/contributor-agreements/{slug} endpoint allows to
+check if a user has signed a contributor agreement.
+This api endpoint can be used by a gitea action workflow, e.g. like this:
+
+```
+    name: contributor agreement check
+
+    on:
+      pull_request_target:
+        types: [opened, ready_for_review, reopened, review_requested]
+
+    env:
+      CONTRIBUTOR_AGREEMENT: ...
+
+    jobs:
+      check_api:
+        runs-on: ...
+        steps:
+          - run: echo "Checking $CONTRIBUTOR_AGREEMENT for ${{ gitea.event.pull_request.user.login }}"
+          - run: result=$(curl --show-error --silent "$GITHUB_API_URL/users/${{ gitea.event.pull_request.user.login }}/contributor-agreements/$CONTRIBUTOR_AGREEMENT"); if [ "$result" == "OK" ]; then exit 0; else echo $result; exit 1; fi
+```
+
+cleanup signed agreements on user deletion
+
+Admin UI for listing/search and batch signing
+
+always add a prefix for the batch sign comment
+---
+ models/user/contributor_agreement.go          |  62 ++++++
+ options/locale/locale_en-US.ini               |  21 ++
+ routers/api/v1/api.go                         |   2 +
+ routers/api/v1/user/contributor_agreement.go  |  65 ++++++
+ .../admin/signed_contributor_agreements.go    | 202 ++++++++++++++++++
+ .../user/setting/contributor_agreements.go    |  76 +++++++
+ routers/web/web.go                            |   9 +
+ services/user/delete.go                       |   1 +
+ templates/admin/navbar.tmpl                   |   5 +-
+ .../batch_sign.tmpl                           |  35 +++
+ .../signed_contributor_agreements/list.tmpl   |  60 ++++++
+ templates/swagger/v1_json.tmpl                |  36 ++++
+ .../user/settings/contributor_agreements.tmpl |  45 ++++
+ templates/user/settings/navbar.tmpl           |   3 +
+ 14 files changed, 621 insertions(+), 1 deletion(-)
+ create mode 100644 models/user/contributor_agreement.go
+ create mode 100644 routers/api/v1/user/contributor_agreement.go
+ create mode 100644 routers/web/admin/signed_contributor_agreements.go
+ create mode 100644 routers/web/user/setting/contributor_agreements.go
+ create mode 100644 templates/admin/signed_contributor_agreements/batch_sign.tmpl
+ create mode 100644 templates/admin/signed_contributor_agreements/list.tmpl
+ create mode 100644 templates/user/settings/contributor_agreements.tmpl
+
+diff --git a/models/user/contributor_agreement.go b/models/user/contributor_agreement.go
+new file mode 100644
+index 0000000000..c2c4f550ff
+--- /dev/null
++++ b/models/user/contributor_agreement.go
+@@ -0,0 +1,62 @@
++// Copyright 2025 The Gitea Authors. All rights reserved.
++// SPDX-License-Identifier: MIT
++
++// BLENDER: contributor agreement
++
++package user
++
++import (
++	"code.gitea.io/gitea/models/db"
++	"code.gitea.io/gitea/modules/timeutil"
++
++	"xorm.io/builder"
++)
++
++type ContributorAgreement struct {
++	ID          int64              `xorm:"pk autoincr"`
++	Slug        string             `xorm:"UNIQUE"`
++	CreatedUnix timeutil.TimeStamp `xorm:"created"`
++	Content     string             `xorm:"TEXT NOT NULL"`
++}
++
++type SignedContributorAgreement struct {
++	ID                     int64              `xorm:"pk autoincr"`
++	UserID                 int64              `xorm:"UNIQUE(s)"`
++	ContributorAgreementID int64              `xorm:"UNIQUE(s)"`
++	CreatedUnix            timeutil.TimeStamp `xorm:"created"`
++	Comment                string             `xorm:"TEXT DEFAULT NULL"`
++}
++
++type FindSignedContributorAgreementsOptions struct {
++	db.ListOptions
++	ContributorAgreementID int64
++	UserID                 int64
++	UserIDs                []int64
++}
++
++func (opts *FindSignedContributorAgreementsOptions) ToConds() builder.Cond {
++	cond := builder.NewCond()
++	if opts.ContributorAgreementID != 0 {
++		cond = cond.And(builder.Eq{"contributor_agreement_id": opts.ContributorAgreementID})
++	}
++	if opts.UserID != 0 {
++		cond = cond.And(builder.Eq{"user_id": opts.UserID})
++	}
++	if opts.UserIDs != nil {
++		cond = cond.And(builder.In("user_id", opts.UserIDs))
++	}
++	return cond
++}
++
++func (opts *FindSignedContributorAgreementsOptions) ToOrders() string {
++	return "id DESC"
++}
++
++func init() {
++	// These tables don't exist in the upstream code.
++	// We don't introduce migrations for it to avoid migration id clashes.
++	// Gitea will create the tables in the database during startup,
++	// so no manual action is required until we start modifying the tables.
++	db.RegisterModel(new(ContributorAgreement))
++	db.RegisterModel(new(SignedContributorAgreement))
++}
+diff --git a/options/locale/locale_en-US.ini b/options/locale/locale_en-US.ini
+index 7f787ac74d..01d7d47998 100644
+--- a/options/locale/locale_en-US.ini
++++ b/options/locale/locale_en-US.ini
+@@ -750,6 +750,7 @@ account_link = Linked Accounts
+ organization = Organizations
+ uid = UID
+ webauthn = Two-Factor Authentication (Security Keys)
++contributor_agreements = Contributor Agreements
+ 
+ public_profile = Public Profile
+ biography_placeholder = Tell us a little bit about yourself! (You can use Markdown)
+@@ -3007,6 +3008,7 @@ last_page = Last
+ total = Total: %d
+ settings = Admin Settings
+ spamreports = Spam Reports
++signed_contributor_agreements = Signed CLA
+ 
+ dashboard.new_version_hint = Gitea %s is now available, you are running %s. Check <a target="_blank" rel="noreferrer" href="%s">the blog</a> for more details.
+ dashboard.statistic = Summary
+@@ -3179,6 +3181,18 @@ spamreports.created = Report Created
+ spamreports.updated = Report Updated
+ spamreports.status = Report Status
+ 
++signed_contributor_agreements.all_option = All
++signed_contributor_agreements.batch_sign = Batch sign contributor agreements
++signed_contributor_agreements.batch_sign_button = Batch sign
++signed_contributor_agreements.comment = Comment
++signed_contributor_agreements.panel = Signed Contributor Agreements
++signed_contributor_agreements.search_button = Search
++signed_contributor_agreements.search_user = Search users
++signed_contributor_agreements.signed_at = Signed At
++signed_contributor_agreements.slug = CLA
++signed_contributor_agreements.user = User
++signed_contributor_agreements.usernames_input = Usernames, one per line
++
+ orgs.org_manage_panel = Organization Management
+ orgs.name = Name
+ orgs.teams = Teams
+@@ -3946,3 +3960,10 @@ normal_file = Normal file
+ executable_file = Executable file
+ symbolic_link = Symbolic link
+ submodule = Submodule
++
++[contributor_agreements]
++signed_at = Signed by you at %s
++confirm = I agree to the terms of the contributor agreement.
++sign = Sign
++view_and_sign = View text and sign
++view = View text
+diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
+index 5f52ee8a43..21c6eeca9d 100644
+--- a/routers/api/v1/api.go
++++ b/routers/api/v1/api.go
+@@ -1022,6 +1022,8 @@ func Routes() *web.Router {
+ 				}, reqSelfOrAdmin(), reqBasicOrRevProxyAuth())
+ 
+ 				m.Get("/activities/feeds", user.ListUserActivityFeeds)
++				// BLENDER: contributor agreement
++				m.Get("/contributor-agreements/{slug}", user.CheckContributorAgreement)
+ 			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
+ 		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
+ 
+diff --git a/routers/api/v1/user/contributor_agreement.go b/routers/api/v1/user/contributor_agreement.go
+new file mode 100644
+index 0000000000..c9ff5ddccf
+--- /dev/null
++++ b/routers/api/v1/user/contributor_agreement.go
+@@ -0,0 +1,65 @@
++// Copyright 2025 The Gitea Authors. All rights reserved.
++// SPDX-License-Identifier: MIT
++
++// BLENDER: contributor agreement
++
++package user
++
++import (
++	"fmt"
++	"net/http"
++
++	"code.gitea.io/gitea/models/db"
++	user_model "code.gitea.io/gitea/models/user"
++	"code.gitea.io/gitea/services/context"
++
++	"xorm.io/builder"
++)
++
++func CheckContributorAgreement(ctx *context.APIContext) {
++	// swagger:operation GET /users/{username}/contributor-agreements/{slug} user userCheckContributorAgreement
++	// ---
++	// summary: Check if contributor agreement is signed by the user
++	// produces:
++	// - application/json
++	// parameters:
++	// - name: username
++	//   in: path
++	//   description: username of user
++	//   type: string
++	//   required: true
++	// - name: slug
++	//   in: path
++	//   description: slug of a contributor agreement to check
++	//   type: string
++	//   required: true
++	// responses:
++	//   "200":
++	//     "$ref": "#/responses/string"
++	//   "404":
++	//     "$ref": "#/responses/notFound"
++
++	slug := ctx.PathParam("slug")
++	ca, exist, err := db.Get[user_model.ContributorAgreement](ctx, builder.Eq{"slug": slug})
++	if err != nil {
++		ctx.APIErrorInternal(err)
++		return
++	}
++	if !exist {
++		ctx.APIError(http.StatusNotFound, fmt.Sprintf("Contributor agreement <%s> is not found.", slug))
++		return
++	}
++	_, exist, err = db.Get[user_model.SignedContributorAgreement](ctx, builder.Eq{
++		"contributor_agreement_id": ca.ID,
++		"user_id":                  ctx.ContextUser.ID,
++	})
++	if err != nil {
++		ctx.APIErrorInternal(err)
++		return
++	}
++	if !exist {
++		ctx.PlainText(http.StatusNotFound, fmt.Sprintf("Contributor agreement <%s> is not signed. Sign at Settings > Contributor Agreements.", slug))
++		return
++	}
++	ctx.PlainText(http.StatusOK, "OK")
++}
+diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
+new file mode 100644
+index 0000000000..58da20b074
+--- /dev/null
++++ b/routers/web/admin/signed_contributor_agreements.go
+@@ -0,0 +1,202 @@
++// Copyright 2025 The Gitea Authors.
++// SPDX-License-Identifier: MIT
++
++// BLENDER: contributor agreement
++
++package admin
++
++import (
++	"fmt"
++	"net/http"
++	"strings"
++
++	"code.gitea.io/gitea/models/db"
++	user_model "code.gitea.io/gitea/models/user"
++	"code.gitea.io/gitea/modules/log"
++	"code.gitea.io/gitea/modules/setting"
++	"code.gitea.io/gitea/modules/templates"
++	"code.gitea.io/gitea/services/context"
++)
++
++const (
++	tplSignedContributorAgreements    templates.TplName = "admin/signed_contributor_agreements/list"
++	tplContributorAgreementsBatchSign templates.TplName = "admin/signed_contributor_agreements/batch_sign"
++)
++
++// SignedContributorAgreements shows signed contributor agreements.
++func SignedContributorAgreements(ctx *context.Context) {
++	ctx.Data["Title"] = ctx.Tr("admin.signed_contributor_agreements")
++	ctx.Data["PageIsSignedContributorAgreements"] = true
++
++	page := ctx.FormInt("page")
++	if page <= 1 {
++		page = 1
++	}
++
++	opts := user_model.FindSignedContributorAgreementsOptions{
++		ListOptions: db.ListOptions{
++			PageSize: setting.UI.Admin.UserPagingNum,
++			Page:     page,
++		},
++	}
++
++	contributorAgreementID := ctx.FormInt64("contributor_agreement_id")
++	ctx.Data["ContributorAgreementID"] = contributorAgreementID
++	if contributorAgreementID != 0 {
++		opts.ContributorAgreementID = contributorAgreementID
++	}
++
++	keyword := ctx.FormTrim("q")
++	ctx.Data["Keyword"] = keyword
++	if keyword != "" {
++		users, _, err := user_model.SearchUsers(ctx, &user_model.SearchUserOptions{Keyword: keyword, SearchByEmail: true})
++		if err != nil {
++			ctx.ServerError("SearchUsers", err)
++			return
++		}
++		userIDs := make([]int64, 0, len(users))
++		for _, user := range users {
++			userIDs = append(userIDs, user.ID)
++		}
++		opts.UserIDs = userIDs
++	}
++
++	signedContributorAgreements, count, err := db.FindAndCount[user_model.SignedContributorAgreement](ctx, &opts)
++	if err != nil {
++		ctx.ServerError("SignedContributorAgreements", err)
++		return
++	}
++	ctx.Data["SignedContributorAgreements"] = signedContributorAgreements
++	pager := context.NewPagination(int(count), opts.PageSize, opts.Page, 5)
++	pager.AddParamFromRequest(ctx.Req)
++	ctx.Data["Page"] = pager
++
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	if err != nil {
++		ctx.ServerError("FindContributorAgreements", err)
++		return
++	}
++	ctx.Data["ContributorAgreements"] = contributorAgreements
++	contributorAgreementsLookup := make(map[int64]string)
++	for _, ca := range contributorAgreements {
++		contributorAgreementsLookup[ca.ID] = ca.Slug
++	}
++	ctx.Data["ContributorAgreementsLookup"] = contributorAgreementsLookup
++
++	userIDs := make([]int64, 0, len(signedContributorAgreements))
++	for _, sca := range signedContributorAgreements {
++		userIDs = append(userIDs, sca.UserID)
++	}
++	userMap, err := user_model.GetUsersMapByIDs(ctx, userIDs)
++	if err != nil {
++		ctx.ServerError("GetUsersMapByIDs", err)
++		return
++	}
++	ctx.Data["UserMap"] = userMap
++
++	ctx.HTML(http.StatusOK, tplSignedContributorAgreements)
++}
++
++// ContributorAgreementsBatchSign displays a form for batch signing contributor agreements on users' behalf.
++func ContributorAgreementsBatchSign(ctx *context.Context) {
++	ctx.Data["Title"] = ctx.Tr("admin.signed_contributor_agreements.batch_sign")
++	ctx.Data["PageIsSignedContributorAgreements"] = true
++
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	if err != nil {
++		ctx.ServerError("FindContributorAgreements", err)
++		return
++	}
++	ctx.Data["ContributorAgreements"] = contributorAgreements
++
++	ctx.HTML(http.StatusOK, tplContributorAgreementsBatchSign)
++}
++
++// ContributorAgreementsBatchSign processes a form for batch signing contributor agreements on users' behalf.
++func ContributorAgreementsBatchSignPost(ctx *context.Context) {
++	comment := ctx.FormTrim("comment")
++	contributorAgreementID := ctx.FormInt64("contributor_agreement_id")
++	usernames := strings.Fields(ctx.FormTrim("usernames"))
++
++	ctx.Data["Title"] = ctx.Tr("admin.signed_contributor_agreements.batch_sign")
++	ctx.Data["PageIsSignedContributorAgreements"] = true
++
++	ctx.Data["Comment"] = comment
++	ctx.Data["ContributorAgreementID"] = contributorAgreementID
++	ctx.Data["Usernames"] = strings.Join(usernames, "\n")
++
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	if err != nil {
++		ctx.ServerError("FindContributorAgreements", err)
++		return
++	}
++	ctx.Data["ContributorAgreements"] = contributorAgreements
++
++	exists, err := db.ExistByID[user_model.ContributorAgreement](ctx, contributorAgreementID)
++	if err != nil {
++		ctx.ServerError("ExistByID", err)
++		return
++	}
++	if !exists {
++		ctx.Data["Error"] = fmt.Sprintf("unknown contributor agreement ID=%d", contributorAgreementID)
++		ctx.HTML(http.StatusOK, tplContributorAgreementsBatchSign)
++		return
++	}
++
++	userIDs, err := user_model.GetUserIDsByNames(ctx, usernames, false)
++	if err != nil {
++		if user_model.IsErrUserNotExist(err) {
++			ctx.Data["Error"] = err
++			log.Error("GetUserIDsByNames: %v", err)
++		} else {
++			ctx.Data["Error"] = "something went wrong"
++		}
++		ctx.HTML(http.StatusOK, tplContributorAgreementsBatchSign)
++		return
++	}
++	// Check for duplicates before inserting.
++	existingSCA, err := db.Find[user_model.SignedContributorAgreement](ctx, &user_model.FindSignedContributorAgreementsOptions{
++		ContributorAgreementID: contributorAgreementID,
++		UserIDs:                userIDs,
++	})
++	if err != nil {
++		ctx.ServerError("FindSignedContributorAgreements", err)
++		return
++	}
++	if len(existingSCA) > 0 {
++		existingUserIDs := make([]int64, len(existingSCA))
++		for i, sca := range existingSCA {
++			existingUserIDs[i] = sca.UserID
++		}
++		existingUsers, err := user_model.GetUserByIDs(ctx, existingUserIDs)
++		if err != nil {
++			ctx.ServerError("GetUserByIDs", err)
++			return
++		}
++		existingUsernames := make([]string, len(existingUsers))
++		for i, user := range existingUsers {
++			existingUsernames[i] = user.Name
++		}
++		ctx.Data["Error"] = fmt.Sprintf("users already signed this contributor agreement: %v", existingUsernames)
++		ctx.HTML(http.StatusOK, tplContributorAgreementsBatchSign)
++		return
++	}
++
++	insertSCA := make([]*user_model.SignedContributorAgreement, len(userIDs))
++	commentWithPrefix := fmt.Sprintf("batch signed: %s", comment)
++	for i, userID := range userIDs {
++		insertSCA[i] = &user_model.SignedContributorAgreement{
++			ContributorAgreementID: contributorAgreementID,
++			Comment:                commentWithPrefix,
++			UserID:                 userID,
++		}
++	}
++	if err := db.Insert(ctx, insertSCA); err != nil {
++		log.Error("Insert SignedContributorAgreements: %v", err)
++		ctx.Data["Error"] = "something went wrong"
++		ctx.HTML(http.StatusOK, tplContributorAgreementsBatchSign)
++		return
++	}
++
++	ctx.Redirect(setting.AppSubURL + "/-/admin/signed_contributor_agreements")
++}
+diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
+new file mode 100644
+index 0000000000..622a6e023a
+--- /dev/null
++++ b/routers/web/user/setting/contributor_agreements.go
+@@ -0,0 +1,76 @@
++// Copyright 2025 The Gitea Authors. All rights reserved.
++// SPDX-License-Identifier: MIT
++
++// BLENDER: contributor agreement
++
++package setting
++
++import (
++	"net/http"
++
++	"code.gitea.io/gitea/models/db"
++	user_model "code.gitea.io/gitea/models/user"
++	"code.gitea.io/gitea/modules/setting"
++	"code.gitea.io/gitea/modules/templates"
++	"code.gitea.io/gitea/modules/timeutil"
++	"code.gitea.io/gitea/services/context"
++
++	"xorm.io/builder"
++)
++
++const (
++	tplSettingsContributorAgreements templates.TplName = "user/settings/contributor_agreements"
++)
++
++// ContributorAgreements lists all agreements and shows which ones were signed.
++func ContributorAgreements(ctx *context.Context) {
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	if err != nil {
++		ctx.ServerError("FindContributorAgreements", err)
++		return
++	}
++	signedContributorAgreements, err := db.Find[user_model.SignedContributorAgreement](ctx, &user_model.FindSignedContributorAgreementsOptions{UserID: ctx.Doer.ID})
++	if err != nil {
++		ctx.ServerError("FindSignedContributorAgreements", err)
++		return
++	}
++	signedID2Timestamp := make(map[int64]timeutil.TimeStamp)
++	for _, sca := range signedContributorAgreements {
++		signedID2Timestamp[sca.ContributorAgreementID] = sca.CreatedUnix
++	}
++	type UserContributorAgreement struct {
++		user_model.ContributorAgreement
++		SignedAt timeutil.TimeStamp
++	}
++	userContributorAgreements := make([]*UserContributorAgreement, len(contributorAgreements))
++	for i, ca := range contributorAgreements {
++		var uca UserContributorAgreement
++		uca.ContributorAgreement = *ca
++		uca.SignedAt = signedID2Timestamp[ca.ID]
++		userContributorAgreements[i] = &uca
++	}
++
++	ctx.Data["ContributorAgreements"] = userContributorAgreements
++	ctx.Data["PageIsSettingsContributorAgreements"] = true
++	ctx.Data["Title"] = ctx.Tr("settings.contributor_agreements")
++	ctx.HTML(http.StatusOK, tplSettingsContributorAgreements)
++}
++
++// SignContributorAgreement signs a contributor agreement.
++func SignContributorAgreement(ctx *context.Context) {
++	slug := ctx.PathParam("slug")
++	ca, exist, err := db.Get[user_model.ContributorAgreement](ctx, builder.Eq{"slug": slug})
++	if err != nil {
++		ctx.ServerError("GetContributorAgreement", err)
++		return
++	}
++	if !exist {
++		ctx.PlainText(http.StatusNotFound, "unknown contributor agreement")
++		return
++	}
++	if err := db.Insert(ctx, &user_model.SignedContributorAgreement{UserID: ctx.Doer.ID, ContributorAgreementID: ca.ID}); err != nil {
++		ctx.ServerError("SignContributorAgreement", err)
++		return
++	}
++	ctx.Redirect(setting.AppSubURL + "/user/settings/contributor_agreements")
++}
+diff --git a/routers/web/web.go b/routers/web/web.go
+index 292db3e9f7..53eb37a7bb 100644
+--- a/routers/web/web.go
++++ b/routers/web/web.go
+@@ -685,6 +685,9 @@ func registerWebRoutes(m *web.Router) {
+ 
+ 		// BLENDER: spam reporting
+ 		m.Post("/spamreport", user_setting.SpamReportUserPost)
++		// BLENDER: contributor agreement
++		m.Get("/contributor_agreements", user_setting.ContributorAgreements)
++		m.Post("/contributor_agreements/{slug}/sign", user_setting.SignContributorAgreement)
+ 	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled, "EnableNotifyMail", setting.Service.EnableNotifyMail))
+ 
+ 	m.Group("/user", func() {
+@@ -765,6 +768,12 @@ func registerWebRoutes(m *web.Router) {
+ 		})
+ 		m.Post("/purge_spammer", admin.PurgeSpammerPost)
+ 
++		// BLENDER: contributor agreement
++		m.Group("/signed_contributor_agreements", func() {
++			m.Get("", admin.SignedContributorAgreements)
++			m.Combo("/batch_sign").Get(admin.ContributorAgreementsBatchSign).Post(admin.ContributorAgreementsBatchSignPost)
++		})
++
+ 		m.Group("/orgs", func() {
+ 			m.Get("", admin.Organizations)
+ 		})
+diff --git a/services/user/delete.go b/services/user/delete.go
+index 39c6ef052d..3b8a7ef5e5 100644
+--- a/services/user/delete.go
++++ b/services/user/delete.go
+@@ -95,6 +95,7 @@ func deleteUser(ctx context.Context, u *user_model.User, purge bool) (err error)
+ 		&user_model.Blocking{BlockerID: u.ID},
+ 		&user_model.Blocking{BlockeeID: u.ID},
+ 		&actions_model.ActionRunnerToken{OwnerID: u.ID},
++		&user_model.SignedContributorAgreement{UserID: u.ID},
+ 	); err != nil {
+ 		return fmt.Errorf("deleteBeans: %w", err)
+ 	}
+diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
+index 6cee23f79c..8f1ae3b0e4 100644
+--- a/templates/admin/navbar.tmpl
++++ b/templates/admin/navbar.tmpl
+@@ -13,7 +13,7 @@
+ 				</a>
+ 			</div>
+ 		</details>
+-		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
++		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports .PageIsSignedContributorAgreements}}open{{end}}>
+ 			<summary>{{ctx.Locale.Tr "admin.identity_access"}}</summary>
+ 			<div class="menu">
+ 				<a class="{{if .PageIsAdminAuthentications}}active {{end}}item" href="{{AppSubUrl}}/-/admin/auths">
+@@ -31,6 +31,9 @@
+ 				<a class="{{if .PageIsSpamReports}}active {{end}}item" href="{{AppSubUrl}}/-/admin/spamreports">
+ 					{{ctx.Locale.Tr "admin.spamreports"}}
+ 				</a>
++				<a class="{{if .PageIsSignedContributorAgreements}}active {{end}}item" href="{{AppSubUrl}}/-/admin/signed_contributor_agreements">
++					{{ctx.Locale.Tr "admin.signed_contributor_agreements"}}
++				</a>
+ 			</div>
+ 		</details>
+ 		<details class="item toggleable-item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
+diff --git a/templates/admin/signed_contributor_agreements/batch_sign.tmpl b/templates/admin/signed_contributor_agreements/batch_sign.tmpl
+new file mode 100644
+index 0000000000..1dd34da35d
+--- /dev/null
++++ b/templates/admin/signed_contributor_agreements/batch_sign.tmpl
+@@ -0,0 +1,35 @@
++{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
++
++<div class="admin-setting-content">
++	<h4 class="ui top attached header">
++		{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign"}}
++	</h4>
++	<div class="ui attached segment">
++		{{if .Error}}
++			<div class="ui error message">{{.Error}}</div>
++		{{end}}
++		<form class="ui form" method="post">
++			{{.CsrfTokenHtml}}
++			<label>
++				{{ctx.Locale.Tr "admin.signed_contributor_agreements.slug"}}
++				<select name="contributor_agreement_id" required>
++					<option value="">--</option>
++					{{range .ContributorAgreements}}
++						<option value="{{.ID}}" {{if eq .ID $.ContributorAgreementID }}selected{{end}}>{{.Slug}}</option>
++					{{end}}
++				</select>
++			</label>
++			<label>
++				{{ctx.Locale.Tr "admin.signed_contributor_agreements.usernames_input"}}
++				<textarea name="usernames" required>{{.Usernames}}</textarea>
++			</label>
++			<label>
++				{{ctx.Locale.Tr "admin.signed_contributor_agreements.comment"}}
++				<textarea name="comment">{{.Comment}}</textarea>
++			</label>
++			<button class="ui button tw-mt-4" type="submit">{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign_button"}}</button>
++		</form>
++	</div>
++</div>
++
++{{template "admin/layout_footer" .}}
+diff --git a/templates/admin/signed_contributor_agreements/list.tmpl b/templates/admin/signed_contributor_agreements/list.tmpl
+new file mode 100644
+index 0000000000..3260b83159
+--- /dev/null
++++ b/templates/admin/signed_contributor_agreements/list.tmpl
+@@ -0,0 +1,60 @@
++{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
++
++<div class="admin-setting-content">
++	<h4 class="ui top attached header">
++		{{ctx.Locale.Tr "admin.signed_contributor_agreements.panel"}}
++		<div class="ui right">
++			<a class="ui primary tiny button" href="/-/admin/signed_contributor_agreements/batch_sign">
++				{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign_button"}}
++			</a>
++		</div>
++	</h4>
++	<div class="ui attached segment">
++		<form class="ui form ignore-dirty flex-text-block">
++			<label>
++				{{ctx.Locale.Tr "admin.signed_contributor_agreements.search_user"}}
++				<input name="q" value="{{.Keyword}}" />
++			</label>
++			<label>
++				{{ctx.Locale.Tr "admin.signed_contributor_agreements.slug"}}
++				<select name="contributor_agreement_id">
++					<option value="">{{ctx.Locale.Tr "admin.signed_contributor_agreements.all_option"}}</option>
++					{{range .ContributorAgreements}}
++						<option value="{{.ID}}" {{if eq .ID $.ContributorAgreementID }}selected{{end}}>{{.Slug}}</option>
++					{{end}}
++				</select>
++			</label>
++			<button class="ui button tw-mt-4" type="submit">{{ctx.Locale.Tr "admin.signed_contributor_agreements.search_button"}}</button>
++		</form>
++	</div>
++	<div class="ui attached table segment">
++		<table class="ui very basic striped table unstackable">
++			<thead>
++				<tr>
++					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.user"}}</th>
++					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.signed_at"}}</th>
++					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.slug"}}</th>
++					<th>{{ctx.Locale.Tr "admin.signed_contributor_agreements.comment"}}</th>
++				</tr>
++			</thead>
++			<tbody>
++				{{range .SignedContributorAgreements}}
++					<tr>
++						<td>
++							<a href="{{AppSubUrl}}/{{(index $.UserMap .UserID).Name | PathEscape}}">
++								{{(index $.UserMap .UserID).Name}}
++							</a>
++							({{(index $.UserMap .UserID).Email}})
++						</td>
++						<td>{{DateUtils.AbsoluteShort .CreatedUnix}}</td>
++						<td>{{index $.ContributorAgreementsLookup .ContributorAgreementID}}</td>
++						<td>{{.Comment}}</td>
++					</tr>
++				{{end}}
++			</tbody>
++		</table>
++	</div>
++	{{template "base/paginate" .}}
++</div>
++
++{{template "admin/layout_footer" .}}
+diff --git a/templates/swagger/v1_json.tmpl b/templates/swagger/v1_json.tmpl
+index ef0d607e3d..92fe29bcdd 100644
+--- a/templates/swagger/v1_json.tmpl
++++ b/templates/swagger/v1_json.tmpl
+@@ -20199,6 +20199,42 @@
+         }
+       }
+     },
++    "/users/{username}/contributor-agreements/{slug}": {
++      "get": {
++        "produces": [
++          "application/json"
++        ],
++        "tags": [
++          "user"
++        ],
++        "summary": "Check if contributor agreement is signed by the user",
++        "operationId": "userCheckContributorAgreement",
++        "parameters": [
++          {
++            "type": "string",
++            "description": "username of user",
++            "name": "username",
++            "in": "path",
++            "required": true
++          },
++          {
++            "type": "string",
++            "description": "slug of a contributor agreement to check",
++            "name": "slug",
++            "in": "path",
++            "required": true
++          }
++        ],
++        "responses": {
++          "200": {
++            "$ref": "#/responses/string"
++          },
++          "404": {
++            "$ref": "#/responses/notFound"
++          }
++        }
++      }
++    },
+     "/users/{username}/followers": {
+       "get": {
+         "produces": [
+diff --git a/templates/user/settings/contributor_agreements.tmpl b/templates/user/settings/contributor_agreements.tmpl
+new file mode 100644
+index 0000000000..3d621c2d18
+--- /dev/null
++++ b/templates/user/settings/contributor_agreements.tmpl
+@@ -0,0 +1,45 @@
++{{template "user/settings/layout_head" (dict "ctxData" . "pageClass" "user settings contributor-agreements")}}
++	<div class="user-setting-content">
++		<h4 class="ui top attached header">
++			{{ctx.Locale.Tr "settings.contributor_agreements"}}
++		</h4>
++		<div class="ui attached segment">
++			<div class="ui list">
++				{{range .ContributorAgreements}}
++					<div class="item">
++						<div class="tw-mb-2">
++							<h4 class="ui header"><strong>{{.Slug}}</strong></h4>
++							{{if .SignedAt}}
++								<div class="text light-3">{{ctx.Locale.Tr "contributor_agreements.signed_at" (DateUtils.FullTime .SignedAt)}}</div>
++							{{end}}
++						</div>
++						<details>
++							<summary>
++								{{if not .SignedAt}}
++									{{ctx.Locale.Tr "contributor_agreements.view_and_sign"}}
++								{{else}}
++									{{ctx.Locale.Tr "contributor_agreements.view"}}
++								{{end}}
++							</summary>
++							<pre>{{.Content}}</pre>
++							{{if not .SignedAt}}
++								<form method="post" action="{{AppSubUrl}}/user/settings/contributor_agreements/{{.Slug}}/sign" class="ui form">
++									{{$.CsrfTokenHtml}}
++									<div class="field">
++										<div class="ui checkbox">
++											<label>{{ctx.Locale.Tr "contributor_agreements.confirm"}}</label>
++											<input type="checkbox" required name="confirm" />
++										</div>
++									</div>
++									<button class="ui primary button" type="submit">
++										{{ctx.Locale.Tr "contributor_agreements.sign"}}
++									</button>
++								</form>
++							{{end}}
++						</details>
++					</div>
++				{{end}}
++			</div>
++		</div>
++	</div>
++{{template "user/settings/layout_footer" .}}
+diff --git a/templates/user/settings/navbar.tmpl b/templates/user/settings/navbar.tmpl
+index 34e089a68a..eba9f16888 100644
+--- a/templates/user/settings/navbar.tmpl
++++ b/templates/user/settings/navbar.tmpl
+@@ -65,5 +65,8 @@
+ 		<a class="{{if .PageIsSettingsRepos}}active {{end}}item" href="{{AppSubUrl}}/user/settings/repos">
+ 			{{ctx.Locale.Tr "settings.repos"}}
+ 		</a>
++		<a class="{{if .PageIsSettingsContributorAgreements}}active {{end}}item" href="{{AppSubUrl}}/user/settings/contributor_agreements">
++			{{ctx.Locale.Tr "settings.contributor_agreements"}}
++		</a>
+ 	</div>
+ </div>
+-- 
+2.49.1
+

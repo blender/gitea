@@ -1,22 +1,22 @@
-From 407c5c9833c79f4be7c08fb64267d16cfa3fe6d9 Mon Sep 17 00:00:00 2001
+From 0421832c00e6a3ce8e26c68bbb92fd5081acd64a Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 2 Apr 2025 17:30:05 +0200
-Subject: [PATCH 14/18] BLENDER: Sync user badges on sign-in
+Subject: [PATCH 14/19] BLENDER: Sync user badges on sign-in
 
 Don't escalate any errors, only log them, to avoid breaking sign-in.
 ---
- routers/web/auth/oauth.go   | 24 +++++++++++
+ routers/web/auth/oauth.go   | 26 ++++++++++++
  services/user/badge.go      | 55 +++++++++++++++++++++++++
  services/user/badge_test.go | 80 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 159 insertions(+)
+ 3 files changed, 161 insertions(+)
  create mode 100644 services/user/badge.go
  create mode 100644 services/user/badge_test.go
 
 diff --git a/routers/web/auth/oauth.go b/routers/web/auth/oauth.go
-index 0769c58fe9..8c831e5e66 100644
+index 03457cb260..954550cb78 100644
 --- a/routers/web/auth/oauth.go
 +++ b/routers/web/auth/oauth.go
-@@ -301,8 +301,32 @@ func updateAvatarIfNeed(ctx *context.Context, url string, u *user_model.User) {
+@@ -321,8 +321,34 @@ func oauth2UpdateAvatarIfNeed(ctx *context.Context, url string, u *user_model.Us
  	}
  }
  
@@ -38,17 +38,19 @@ index 0769c58fe9..8c831e5e66 100644
 +	return user_service.UpdateBadgesBestEffort(ctx, u, remoteBadges)
 +}
 +
- func handleOAuth2SignIn(ctx *context.Context, source *auth.Source, u *user_model.User, gothUser goth.User) {
- 	updateAvatarIfNeed(ctx, gothUser.AvatarURL, u)
+ func handleOAuth2SignIn(ctx *context.Context, authSource *auth.Source, u *user_model.User, gothUser goth.User) {
+ 	oauth2SignInSync(ctx, authSource.ID, u, gothUser)
++
 +	// BLENDER: sync user badges
 +	// Don't escalate any errors, only log them:
 +	// we don't want to break login process due to errors in badges sync
 +	if err := updateBadgesIfNeed(ctx, gothUser.RawData, u); err != nil {
 +		log.Error("Failed to update user badges for %s: %w", u.LoginName, err)
 +	}
- 
- 	needs2FA := false
- 	if !source.TwoFactorShouldSkip() {
++
+ 	if ctx.Written() {
+ 		return
+ 	}
 diff --git a/services/user/badge.go b/services/user/badge.go
 new file mode 100644
 index 0000000000..be6124a7fe
@@ -112,7 +114,7 @@ index 0000000000..be6124a7fe
 +}
 diff --git a/services/user/badge_test.go b/services/user/badge_test.go
 new file mode 100644
-index 0000000000..9744355390
+index 0000000000..41880a9fa9
 --- /dev/null
 +++ b/services/user/badge_test.go
 @@ -0,0 +1,80 @@
@@ -141,7 +143,7 @@ index 0000000000..9744355390
 +// This test illustrates the need for a database transaction around AddUserBadge and RemoveUserBadge calls.
 +// This test is not deterministic, but at least it can demonstrate the problem after a few non-cached runs:
 +//
-+//     go test -count=1 -v -tags sqlite -run TestUpdateBadgesBestEffort ./services/user/...
++//	go test -count=1 -v -tags sqlite -run TestUpdateBadgesBestEffort ./services/user/...
 +func TestUpdateBadgesBestEffort(t *testing.T) {
 +	assert.NoError(t, unittest.PrepareTestDatabase())
 +
@@ -197,5 +199,5 @@ index 0000000000..9744355390
 +	}
 +}
 -- 
-2.49.0
+2.49.1
 

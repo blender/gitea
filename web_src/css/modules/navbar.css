@@ -66,6 +66,15 @@
     display: flex;
     justify-content: space-between;
   }
+  #navbar .navbar-mobile-left {
+    display: flex;
+    margin: 0;
+    width: auto;
+  }
+  #navbar .navbar-mobile-left > .item {
+    display: flex;
+    width: auto;
+  }
   #navbar .navbar-mobile-right {
     display: flex;
     align-items: center;

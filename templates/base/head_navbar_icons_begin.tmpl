@@ -1,0 +1,13 @@
+{{- $itemExtraClass := .ItemExtraClass -}}
+<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/issues" data-tooltip-content="{{ctx.Locale.Tr "issues"}}">
+  {{svg "octicon-issue-opened"}}
+</a>
+<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/pulls" data-tooltip-content="{{ctx.Locale.Tr "pull_requests"}}">
+  {{svg "octicon-git-pull-request"}}
+</a>
+<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/milestones" data-tooltip-content="{{ctx.Locale.Tr "milestones"}}">
+  {{svg "octicon-milestone"}}
+</a>
+<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/explore" data-tooltip-content="{{ctx.Locale.Tr "explore"}}">
+  {{svg "octicon-telescope"}}
+</a>

@@ -1,0 +1,69 @@
+From 71ab353b40c4dd0d698b080ef0ce196efe94b438 Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Thu, 13 Nov 2025 15:44:21 +0100
+Subject: [PATCH] BLENDER: Add navigation bar icons on mobile
+
+---
+ templates/base/head_navbar.tmpl             |  4 ++++
+ templates/base/head_navbar_icons_begin.tmpl | 13 +++++++++++++
+ web_src/css/modules/navbar.css              |  9 +++++++++
+ 3 files changed, 26 insertions(+)
+ create mode 100644 templates/base/head_navbar_icons_begin.tmpl
+
+diff --git a/templates/base/head_navbar.tmpl b/templates/base/head_navbar.tmpl
+index b721779c95..5a1f5717d7 100644
+--- a/templates/base/head_navbar.tmpl
++++ b/templates/base/head_navbar.tmpl
+@@ -6,6 +6,10 @@
+ 		</a>
+ 
+ 		<!-- mobile right menu, it must be here because in mobile view, each item is a flex column, the first item is a full row column -->
++		<div class="ui secondary menu navbar-mobile-left only-mobile">
++			{{template "base/head_navbar_icons_begin"}}
++		</div>
++
+ 		<div class="ui secondary menu navbar-mobile-right only-mobile">
+ 			{{template "base/head_navbar_icons" dict "PageGlobalData" .PageGlobalData}}
+ 			<button class="item ui icon mini button tw-m-0" id="navbar-expand-toggle" aria-label="{{ctx.Locale.Tr "home.nav_menu"}}">{{svg "octicon-three-bars"}}</button>
+diff --git a/templates/base/head_navbar_icons_begin.tmpl b/templates/base/head_navbar_icons_begin.tmpl
+new file mode 100644
+index 0000000000..96830cea9f
+--- /dev/null
++++ b/templates/base/head_navbar_icons_begin.tmpl
+@@ -0,0 +1,13 @@
++{{- $itemExtraClass := .ItemExtraClass -}}
++<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/issues" data-tooltip-content="{{ctx.Locale.Tr "issues"}}">
++  {{svg "octicon-issue-opened"}}
++</a>
++<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/pulls" data-tooltip-content="{{ctx.Locale.Tr "pull_requests"}}">
++  {{svg "octicon-git-pull-request"}}
++</a>
++<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/milestones" data-tooltip-content="{{ctx.Locale.Tr "milestones"}}">
++  {{svg "octicon-milestone"}}
++</a>
++<a class="item {{$itemExtraClass}}" href="{{AppSubUrl}}/explore" data-tooltip-content="{{ctx.Locale.Tr "explore"}}">
++  {{svg "octicon-telescope"}}
++</a>
+diff --git a/web_src/css/modules/navbar.css b/web_src/css/modules/navbar.css
+index 149766a586..6fcda75236 100644
+--- a/web_src/css/modules/navbar.css
++++ b/web_src/css/modules/navbar.css
+@@ -61,6 +61,15 @@
+     display: flex;
+     justify-content: space-between;
+   }
++  #navbar .navbar-mobile-left {
++    display: flex;
++    margin: 0;
++    width: auto;
++  }
++  #navbar .navbar-mobile-left > .item {
++    display: flex;
++    width: auto;
++  }
+   #navbar .navbar-mobile-right {
+     display: flex;
+     margin: 0 0 0 auto;
+-- 
+2.49.1
+

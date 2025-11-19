@@ -1,61 +1,53 @@
-From 398c8f75841d770d879c665cc2aa7f631e55fb19 Mon Sep 17 00:00:00 2001
+From e667234f8cc2554cde1dc8be6db441e8e267130f Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Thu, 12 Jun 2025 14:43:47 +0200
-Subject: [PATCH 17/19] BLENDER: Fine tune pages considered expensive
+Subject: [PATCH 16/19] BLENDER: Fine tune pages considered expensive
 
 ---
- routers/common/blockexpensive.go | 32 ++++++++++++++++----------------
- 1 file changed, 16 insertions(+), 16 deletions(-)
+ routers/common/blockexpensive.go | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
 
 diff --git a/routers/common/blockexpensive.go b/routers/common/blockexpensive.go
-index f52aa2b709..b0c3aee079 100644
+index f52aa2b709..461a03179e 100644
 --- a/routers/common/blockexpensive.go
 +++ b/routers/common/blockexpensive.go
-@@ -39,28 +39,28 @@ func isRoutePathExpensive(routePattern string) bool {
- 	}
+@@ -40,23 +40,24 @@ func isRoutePathExpensive(routePattern string) bool {
  
  	expensivePaths := []string{
--		// code related
-+		// code related, very expensive pages
- 		"/{username}/{reponame}/archive/",
+ 		// code related
+-		"/{username}/{reponame}/archive/",
++		// "/{username}/{reponame}/archive/",
  		"/{username}/{reponame}/blame/",
 -		"/{username}/{reponame}/commit/",
 -		"/{username}/{reponame}/commits/",
- 		"/{username}/{reponame}/graph",
+-		"/{username}/{reponame}/graph",
 -		"/{username}/{reponame}/media/",
 -		"/{username}/{reponame}/raw/",
 -		"/{username}/{reponame}/src/",
++		// "/{username}/{reponame}/commit/",
++		// "/{username}/{reponame}/commits/",
++		// "/{username}/{reponame}/graph",
++		// "/{username}/{reponame}/media/",
++		// "/{username}/{reponame}/raw/",
++		// "/{username}/{reponame}/src/",
++		"/{username}/{reponame}/compare/",
  
--		// issue & PR related (no trailing slash)
+ 		// issue & PR related (no trailing slash)
 -		"/{username}/{reponame}/issues",
 -		"/{username}/{reponame}/{type:issues}",
 -		"/{username}/{reponame}/pulls",
 -		"/{username}/{reponame}/{type:pulls}",
--
--		// wiki
--		"/{username}/{reponame}/wiki/",
-+		// activity, trailing slash removed
-+		"/{username}/{reponame}/activity",
-+	}
++		// "/{username}/{reponame}/issues",
++		// "/{username}/{reponame}/{type:issues}",
++		// "/{username}/{reponame}/pulls",
++		// "/{username}/{reponame}/{type:pulls}",
  
--		// activity
--		"/{username}/{reponame}/activity/",
-+	if !(strings.HasPrefix(routePattern, "/blender/") ||
-+		strings.HasPrefix(routePattern, "/studio/") ||
-+		strings.HasPrefix(routePattern, "/extensions/") ||
-+		strings.HasPrefix(routePattern, "/infrastructure/")) {
-+		// code related, less expensive not allowed in forks
-+		expensivePaths = append(expensivePaths,
-+			"/{username}/{reponame}/media/",
-+			"/{username}/{reponame}/commit/",
-+			"/{username}/{reponame}/commits/",
-+			"/{username}/{reponame}/src/",
-+			"/{username}/{reponame}/raw/")
- 	}
-+
- 	for _, path := range expensivePaths {
- 		if strings.HasPrefix(routePattern, path) {
- 			return true
+ 		// wiki
+-		"/{username}/{reponame}/wiki/",
++		// "/{username}/{reponame}/wiki/",
+ 
+ 		// activity
+ 		"/{username}/{reponame}/activity/",
 -- 
-2.49.1
+2.51.0
 

@@ -1,4 +1,4 @@
-From f90678f8356c500fd05146920129889e1a9a3258 Mon Sep 17 00:00:00 2001
+From f27d18bf6759b707f9430dbae507bd220b0c5cb7 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Thu, 23 Oct 2025 20:18:11 +0200
 Subject: [PATCH 06/19] BLENDER: Projects: button to show/hide issue details
@@ -215,5 +215,5 @@ index 327919b1fe..1067b5c8f7 100644
 +  margin-left: 0.5em;
  }
 -- 
-2.49.1
+2.51.0
 

@@ -1,7 +1,7 @@
-From f3e7409d4431c9acdc578617051c10874d718fa8 Mon Sep 17 00:00:00 2001
+From 8132f09c63d45148e2f752881a1d5145f1307c71 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Tue, 7 Oct 2025 15:02:05 +0200
-Subject: [PATCH 19/19] BLENDER: Add Git LFS for Git Hook scripts
+Subject: [PATCH 18/19] BLENDER: Add Git LFS for Git Hook scripts
 
 ---
  Dockerfile.rootless | 1 +
@@ -20,5 +20,5 @@ index ebca19ca5b..8444b2fd35 100644
      gnupg \
      openssh-keygen \
 -- 
-2.49.1
+2.51.0
 

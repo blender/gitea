@@ -1,4 +1,4 @@
-From 4987faa1cfb8f6290585969be4ec57e7ee0f3272 Mon Sep 17 00:00:00 2001
+From a247dd6eb009d2462d6b3aaf7b31034fdb2ec67d Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
 Subject: [PATCH 15/19] BLENDER: Add Spam Reporting
@@ -472,7 +472,7 @@ index 0000000000..254b54c56f
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index 98cdf8b964..1809f1cc78 100644
+index 3345882803..292db3e9f7 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
 @@ -282,6 +282,8 @@ func Routes() *web.Router {
@@ -484,7 +484,7 @@ index 98cdf8b964..1809f1cc78 100644
  
  	webRoutes := web.NewRouter()
  	webRoutes.Use(mid...)
-@@ -687,6 +689,9 @@ func registerWebRoutes(m *web.Router) {
+@@ -680,6 +682,9 @@ func registerWebRoutes(m *web.Router) {
  			m.Get("", user_setting.BlockedUsers)
  			m.Post("", web.Bind(forms.BlockUserForm{}), user_setting.BlockedUsersPost)
  		})
@@ -494,7 +494,7 @@ index 98cdf8b964..1809f1cc78 100644
  	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled, "EnableNotifyMail", setting.Service.EnableNotifyMail))
  
  	m.Group("/user", func() {
-@@ -760,6 +765,13 @@ func registerWebRoutes(m *web.Router) {
+@@ -753,6 +758,13 @@ func registerWebRoutes(m *web.Router) {
  			m.Post("/delete", admin.DeleteEmail)
  		})
  
@@ -1051,5 +1051,5 @@ index 0000000000..e9015fd16c
 +	</div>
 +</div>
 -- 
-2.49.1
+2.51.0
 

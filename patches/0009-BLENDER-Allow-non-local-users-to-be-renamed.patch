@@ -1,4 +1,4 @@
-From 27264c09711312168e8d7456f090202009ed63df Mon Sep 17 00:00:00 2001
+From 490ef60df54bb022b6d7ebf546f5a1a44aca6917 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:05:47 +0200
 Subject: [PATCH 09/19] BLENDER: Allow non-local users to be renamed
@@ -33,5 +33,5 @@ index d8abf199c3..d0a7ec64b3 100644
  	if err := user_model.IsUsableUsername(newUserName); err != nil {
  		return err
 -- 
-2.49.1
+2.51.0
 

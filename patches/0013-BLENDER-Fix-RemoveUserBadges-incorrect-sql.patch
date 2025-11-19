@@ -1,4 +1,4 @@
-From 9f2fcd6abbe2bf7ceaf207819a31763db2cd7dde Mon Sep 17 00:00:00 2001
+From cb81590f47de39fcf889ad3a89e9816dc9bfdffa Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 2 Apr 2025 17:11:01 +0200
 Subject: [PATCH 13/19] BLENDER: Fix RemoveUserBadges incorrect sql
@@ -42,5 +42,5 @@ index e475ceb748..e33819d820 100644
  		return nil
  	})
 -- 
-2.49.1
+2.51.0
 

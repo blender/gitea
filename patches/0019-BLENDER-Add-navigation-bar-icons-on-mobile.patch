@@ -1,7 +1,7 @@
-From 71ab353b40c4dd0d698b080ef0ce196efe94b438 Mon Sep 17 00:00:00 2001
+From c0142cf057a88ca46d446be0028561cb3fbe22f5 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Thu, 13 Nov 2025 15:44:21 +0100
-Subject: [PATCH] BLENDER: Add navigation bar icons on mobile
+Subject: [PATCH 19/19] BLENDER: Add navigation bar icons on mobile
 
 ---
  templates/base/head_navbar.tmpl             |  4 ++++
@@ -65,5 +65,5 @@ index 149766a586..6fcda75236 100644
      display: flex;
      margin: 0 0 0 auto;
 -- 
-2.49.1
+2.51.0
 

@@ -1,4 +1,4 @@
-From 72a38f673e937bf45f151d289e77e6843751fc09 Mon Sep 17 00:00:00 2001
+From 10b499c2c2ec0f51d45f8d8ee42f9b9ffc455fc3 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
 Subject: [PATCH 05/19] BLENDER: Support both exclusive and non-exclusive scope
@@ -149,5 +149,5 @@ index 15c8760d1a..75a66290b1 100644
  					{{end}}
  				</div>
 -- 
-2.49.1
+2.51.0
 

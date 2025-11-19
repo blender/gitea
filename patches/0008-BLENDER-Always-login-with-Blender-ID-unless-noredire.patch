@@ -1,4 +1,4 @@
-From 04a64ad2fd956262eae28d1b5e68b1f7483395b1 Mon Sep 17 00:00:00 2001
+From cd37387f02b0245f0afc1a0c472372c84f01cb8b Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:49 +0200
 Subject: [PATCH 08/19] BLENDER: Always login with Blender ID, unless
@@ -51,5 +51,5 @@ index 2ccd1c71b5..2fadfc4b12 100644
  		RedirectAfterLogin(ctx)
  		return
 -- 
-2.49.1
+2.51.0
 

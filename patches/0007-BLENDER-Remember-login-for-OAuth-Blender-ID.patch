@@ -1,4 +1,4 @@
-From f8ddd41b83ef4b40040317eef04c0613e43106ea Mon Sep 17 00:00:00 2001
+From cc522968972bc3c5df57f2516678976c89fb14a0 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:02 +0200
 Subject: [PATCH 07/19] BLENDER: Remember login for OAuth / Blender ID
@@ -41,5 +41,5 @@ index f1c155e78f..03457cb260 100644
  		ctx.Csrf.PrepareForSessionUser(ctx)
  
 -- 
-2.49.1
+2.51.0
 

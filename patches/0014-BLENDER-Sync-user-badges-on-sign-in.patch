@@ -1,4 +1,4 @@
-From 0421832c00e6a3ce8e26c68bbb92fd5081acd64a Mon Sep 17 00:00:00 2001
+From 122e9fb06447db28a05530261209346635d1e798 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 2 Apr 2025 17:30:05 +0200
 Subject: [PATCH 14/19] BLENDER: Sync user badges on sign-in
@@ -199,5 +199,5 @@ index 0000000000..41880a9fa9
 +	}
 +}
 -- 
-2.49.1
+2.51.0
 

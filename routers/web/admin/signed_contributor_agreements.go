@@ -49,7 +49,7 @@ func SignedContributorAgreements(ctx *context.Context) {
 	keyword := ctx.FormTrim("q")
 	ctx.Data["Keyword"] = keyword
 	if keyword != "" {
-		users, _, err := user_model.SearchUsers(ctx, &user_model.SearchUserOptions{Keyword: keyword, SearchByEmail: true})
+		users, _, err := user_model.SearchUsers(ctx, user_model.SearchUserOptions{Keyword: keyword, SearchByEmail: true})
 		if err != nil {
 			ctx.ServerError("SearchUsers", err)
 			return

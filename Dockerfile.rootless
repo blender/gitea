@@ -59,6 +59,7 @@ RUN apk --no-cache add \
 # External renderers
 RUN apk --no-cache add \
     python3-dev \
+    blender \
     && rm -rf /var/cache/apk/*
 
 RUN addgroup \

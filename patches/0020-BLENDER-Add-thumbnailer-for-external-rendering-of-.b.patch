@@ -1,0 +1,25 @@
+From 033e7bbeffb55ebe8368924a5daa19be4da38a2b Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Mon, 8 Dec 2025 15:39:17 +0100
+Subject: [PATCH] BLENDER: Add thumbnailer for external rendering of `.blend`
+ files
+
+---
+ Dockerfile.rootless | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Dockerfile.rootless b/Dockerfile.rootless
+index 8444b2fd35..f34fec820f 100644
+--- a/Dockerfile.rootless
++++ b/Dockerfile.rootless
+@@ -59,6 +59,7 @@ RUN apk --no-cache add \
+ # External renderers
+ RUN apk --no-cache add \
+     python3-dev \
++    blender \
+     && rm -rf /var/cache/apk/*
+ 
+ RUN addgroup \
+-- 
+2.51.2
+

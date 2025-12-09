@@ -20,7 +20,7 @@
 				<select name="contributor_agreement_id">
 					<option value="">{{ctx.Locale.Tr "admin.signed_contributor_agreements.all_option"}}</option>
 					{{range .ContributorAgreements}}
-						<option value="{{.ID}}" {{if eq .ID $.ContributorAgreementID }}selected{{end}}>{{.Slug}}</option>
+						<option value="{{.ID}}" {{if eq .ID $.ContributorAgreementID}}selected{{end}}>{{.Slug}}</option>
 					{{end}}
 				</select>
 			</label>

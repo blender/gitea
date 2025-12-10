@@ -8,9 +8,12 @@ package user
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"code.gitea.io/gitea/models/db"
 	user_model "code.gitea.io/gitea/models/user"
+	"code.gitea.io/gitea/modules/httplib"
+	"code.gitea.io/gitea/modules/setting"
 	"code.gitea.io/gitea/services/context"
 
 	"xorm.io/builder"
@@ -58,7 +61,22 @@ func CheckContributorAgreement(ctx *context.APIContext) {
 		return
 	}
 	if !exist {
-		ctx.PlainText(http.StatusNotFound, fmt.Sprintf("Contributor agreement <%s> is not signed. Sign at Settings > Contributor Agreements.", slug))
+		url := httplib.MakeAbsoluteURL(ctx, setting.AppSubURL + "/user/settings/contributor_agreements")
+		message := []string{
+			fmt.Sprintf("Contributor agreement <%s> is not signed.", slug),
+			fmt.Sprintf("Sign at %s", url),
+		}
+		// Add a visible *** decoration.
+		maxlen := 0
+		for i := range message {
+			l := len(message[i])
+			if l > maxlen {
+				maxlen = l
+			}
+		}
+		hr := strings.Repeat("*", maxlen)
+		message = append(append([]string{"", "", hr}, message...), hr, "")
+		ctx.PlainText(http.StatusNotFound, strings.Join(message, "\n"))
 		return
 	}
 	ctx.PlainText(http.StatusOK, "OK")

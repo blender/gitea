@@ -26,11 +26,6 @@ const mergeStyleAllowedCount = shallowRef(0);
 const showMergeStyleMenu = shallowRef(false);
 const showActionForm = shallowRef(false);
 
-// New state for confirmation modals
-const showConfirmModal = shallowRef(false);
-const confirmModalType = shallowRef(''); // 'no-ci' or 'failed-checks'
-const pendingMergeAction = shallowRef(null);
-
 const mergeButtonStyleClass = computed(() => {
   if (mergeForm.allOverridableChecksOk) return 'primary';
   return autoMergeWhenSucceed.value ? 'primary' : 'red';
@@ -38,28 +33,6 @@ const mergeButtonStyleClass = computed(() => {
 
 const forceMerge = computed(() => {
   return mergeForm.canMergeNow && !mergeForm.allOverridableChecksOk;
-});
-
-const hasNoCIChecks = computed(() => {
-  return mergeForm.ciStatusCount === 0;
-});
-
-const hasFailedChecks = computed(() => {
-  return !mergeForm.allOverridableChecksOk && mergeForm.ciStatusCount > 0;
-});
-
-const confirmModalTitle = computed(() => {
-  if (confirmModalType.value === 'no-ci') {
-    return 'Merge without CI checks?';
-  }
-  return 'Merge with failed checks?';
-});
-
-const confirmModalMessage = computed(() => {
-  if (confirmModalType.value === 'no-ci') {
-    return 'This pull request has no CI checks configured. Are you sure you want to merge without any automated testing?';
-  }
-  return 'Some CI checks have failed. Merging may introduce issues into the codebase. Are you sure you want to proceed?';
 });
 
 watch(mergeStyle, (val) => {
@@ -103,71 +76,25 @@ function switchMergeStyle(name: string, autoMerge = false) {
 function clearMergeMessage() {
   mergeMessageFieldValue.value = mergeForm.defaultMergeMessage;
 }
-
-function handleMergeSubmit(event: Event) {
-  // Check if we need to show confirmation (only if not auto-merge and checks are missing/failed)
-  if (!autoMergeWhenSucceed.value) {
-    const needsConfirmation = hasNoCIChecks.value || hasFailedChecks.value;
-
-    if (needsConfirmation) {
-      event.preventDefault();
-      confirmModalType.value = hasNoCIChecks.value ? 'no-ci' : 'failed-checks';
-      pendingMergeAction.value = event.target as HTMLFormElement;
-      showConfirmModal.value = true;
-      return;
-    }
-  }
-  // Otherwise, let the form submit normally
-}
-
-function confirmMerge() {
-  showConfirmModal.value = false;
-  if (pendingMergeAction.value) {
-    // Add a flag to bypass the check on resubmission
-    const form = pendingMergeAction.value as HTMLFormElement;
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'confirm_merge';
-    input.value = 'true';
-    form.appendChild(input);
-    form.submit();
-  }
-}
-
-function cancelMerge() {
-  showConfirmModal.value = false;
-  pendingMergeAction.value = null;
-}
 </script>
 
 <template>
+  <!--
+  if this component is shown, either the user is an admin (can do a merge without checks), or they are a writer who has the permission to do a merge
+  if the user is a writer and can't do a merge now (canMergeNow==false), then only show the Auto Merge for them
+  How to test the UI manually:
+  * Method 1: manually set some variables in pull.tmpl, eg: {{$notAllOverridableChecksOk = true}} {{$canMergeNow = false}}
+  * Method 2: make a protected branch, then set state=pending/success :
+    curl -X POST ${root_url}/api/v1/repos/${owner}/${repo}/statuses/${sha} \
+      -H "accept: application/json" -H "authorization: Basic $base64_auth" -H "Content-Type: application/json" \
+      -d '{"context": "test/context", "description": "description", "state": "${state}", "target_url": "http://localhost"}'
+  -->
   <div>
-    <!-- Confirmation Modal -->
-    <div v-if="showConfirmModal" class="ui dimmer modals page transition visible active">
-      <div class="ui modal transition visible active">
-        <div class="header">
-          <svg-icon name="octicon-alert" :size="16"/>
-          {{ confirmModalTitle }}
-        </div>
-        <div class="content">
-          <p>{{ confirmModalMessage }}</p>
-        </div>
-        <div class="actions">
-          <button class="ui cancel button" @click="cancelMerge">
-            Cancel
-          </button>
-          <button class="ui red ok button" @click="confirmMerge">
-            Merge Anyway
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- eslint-disable-next-line vue/no-v-html -->
     <div v-if="mergeForm.hasPendingPullRequestMerge" v-html="mergeForm.hasPendingPullRequestMergeTip" class="ui info message"/>
 
     <!-- another similar form is in pull.tmpl (manual merge)-->
-    <form class="ui form form-fetch-action" v-if="showActionForm" :action="mergeForm.baseLink+'/merge'" method="post" @submit="handleMergeSubmit">
+    <form class="ui form form-fetch-action" v-if="showActionForm" :action="mergeForm.baseLink+'/merge'" method="post">
       <input type="hidden" name="_csrf" :value="csrfToken">
       <input type="hidden" name="head_commit_id" v-model="mergeForm.pullHeadCommitID">
       <input type="hidden" name="merge_when_checks_succeed" v-model="autoMergeWhenSucceed">
@@ -322,36 +249,4 @@ function cancelMerge() {
   display: flex;
 }
 
-/* Modal styling */
-.ui.dimmer {
-  background-color: rgba(0, 0, 0, 0.85);
-}
-
-.ui.modal {
-  background: var(--color-body);
-  border-radius: 0.28571429rem;
-}
-
-.ui.modal > .header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--color-secondary);
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.ui.modal > .content {
-  padding: 1.5rem;
-}
-
-.ui.modal > .actions {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--color-secondary);
-  text-align: right;
-}
-
-.ui.modal > .actions button {
-  margin-left: 0.75rem;
-}
 </style>

@@ -372,7 +372,6 @@ func prepareViewPullInfo(ctx *context.Context, issue *issues_model.Issue) *pull_
 			ctx.Data["LatestCommitStatuses"] = commitStatuses
 			ctx.Data["LatestCommitStatus"] = git_model.CalcCommitStatus(commitStatuses)
 		}
-		ctx.Data["CIStatusCount"] = len(commitStatuses)
 
 		compareInfo, err := pull_service.GetCompareInfo(ctx, pull.BaseRepo, pull.BaseRepo, baseGitRepo,
 			pull.MergeBase, pull.GetGitHeadRefName(), false, false)
@@ -1026,38 +1025,6 @@ func MergePullRequest(ctx *context.Context) {
 	pr := issue.PullRequest
 	pr.Issue = issue
 	pr.Issue.Repo = ctx.Repo.Repository
-
-	confirmedMerge := ctx.FormString("confirm_merge") == "true"
-
-	if !confirmedMerge {
-		// Get commit statuses to check CI state
-		sha, err := ctx.Repo.GitRepo.GetRefCommitID(pr.GetGitHeadRefName())
-		if err == nil {
-			commitStatuses, err := git_model.GetLatestCommitStatus(ctx, ctx.Repo.Repository.ID, sha, db.ListOptionsAll)
-			if err == nil {
-				hasNoChecks := len(commitStatuses) == 0
-				hasFailedChecks := false
-
-				// Check if any checks failed
-				for _, status := range commitStatuses {
-					if status.State == "failure" || status.State == "error" {
-						hasFailedChecks = true
-						break
-					}
-				}
-
-				// If missing CI or failed checks without confirmation, reject
-				if (hasNoChecks || hasFailedChecks) && !form.ForceMerge {
-					if hasNoChecks {
-						ctx.JSONError(ctx.Tr("repo.pulls.no_ci_checks_confirmation_required"))
-					} else {
-						ctx.JSONError(ctx.Tr("repo.pulls.failed_checks_confirmation_required"))
-					}
-					return
-				}
-			}
-		}
-	}
 
 	manuallyMerged := repo_model.MergeStyle(form.Do) == repo_model.MergeStyleManuallyMerged
 

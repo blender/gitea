@@ -245,6 +245,8 @@
 
 								'hasPendingPullRequestMerge': {{.HasPendingPullRequestMerge}},
 								'hasPendingPullRequestMergeTip': {{$hasPendingPullRequestMergeTip}},
+
+								'ciStatusCount': {{.CIStatusCount}},
 							};
 
 							const generalHideAutoMerge = mergeForm.canMergeNow && mergeForm.allOverridableChecksOk; // if this pr can be merged now, then hide the auto merge

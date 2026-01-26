@@ -35,6 +35,14 @@ const forceMerge = computed(() => {
   return mergeForm.canMergeNow && !mergeForm.allOverridableChecksOk;
 });
 
+const hasNoCIChecks = computed(() => {
+  return mergeForm.ciStatusCount === 0;
+});
+
+const hasFailedChecks = computed(() => {
+  return !mergeForm.allOverridableChecksOk && mergeForm.ciStatusCount > 0;
+});
+
 watch(mergeStyle, (val) => {
   mergeStyleDetail.value = mergeForm.mergeStyles.find((e: any) => e.name === val);
   for (const elem of document.querySelectorAll('[data-pull-merge-style]')) {
@@ -76,6 +84,53 @@ function switchMergeStyle(name: string, autoMerge = false) {
 function clearMergeMessage() {
   mergeMessageFieldValue.value = mergeForm.defaultMergeMessage;
 }
+
+function handleMergeSubmit(event: Event) {
+  // Skip confirmation for auto-merge or if force merge is enabled
+  if (autoMergeWhenSucceed.value || forceMerge.value) {
+    return true;
+  }
+
+  const form = event.target as HTMLFormElement;
+
+  // Check if already confirmed
+  if (form.querySelector('input[name="confirm_merge"]')) {
+    return true;
+  }
+
+  // Check if we need confirmation
+  const needsConfirmation = hasNoCIChecks.value || hasFailedChecks.value;
+
+  if (needsConfirmation) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const modalId = hasNoCIChecks.value ? '#merge-no-ci-modal' : '#merge-failed-checks-modal';
+
+    // Use Gitea's Fomantic UI modal system
+    // @ts-ignore - jQuery/Fomantic types
+    $(modalId).modal({
+      onApprove: () => {
+        // Add confirmation flag and resubmit
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'confirm_merge';
+        input.value = 'true';
+        form.appendChild(input);
+
+        // Trigger form submission
+        const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+        if (submitBtn) {
+          submitBtn.click();
+        }
+      }
+    }).modal('show');
+
+    return false;
+  }
+
+  return true;
+}
 </script>
 
 <template>
@@ -94,7 +149,7 @@ function clearMergeMessage() {
     <div v-if="mergeForm.hasPendingPullRequestMerge" v-html="mergeForm.hasPendingPullRequestMergeTip" class="ui info message"/>
 
     <!-- another similar form is in pull.tmpl (manual merge)-->
-    <form class="ui form form-fetch-action" v-if="showActionForm" :action="mergeForm.baseLink+'/merge'" method="post">
+    <form class="ui form form-fetch-action" v-if="showActionForm" :action="mergeForm.baseLink+'/merge'" method="post" @submit="handleMergeSubmit">
       <input type="hidden" name="_csrf" :value="csrfToken">
       <input type="hidden" name="head_commit_id" v-model="mergeForm.pullHeadCommitID">
       <input type="hidden" name="merge_when_checks_succeed" v-model="autoMergeWhenSucceed">

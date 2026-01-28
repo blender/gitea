@@ -566,7 +566,7 @@ func prepareIssueFilterAndList(ctx *context.Context, milestoneID int64, projectI
 		}
 	}
 
-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues)
+	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues, true)
 	if err != nil {
 		ctx.ServerError("GetIssuesAllCommitStatus", err)
 		return

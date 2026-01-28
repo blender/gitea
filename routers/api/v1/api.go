@@ -1136,6 +1136,11 @@ func Routes() *web.Router {
 			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
 		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
 
+		// BLENDER: contributor agreement
+		m.Group("/users", func() {
+			m.Get("/{username}/contributor-agreements/{slug}", user.CheckContributorAgreement)
+		}, context.UserAssignmentAPI())
+
 		// Users (requires user scope)
 		m.Group("/users", func() {
 			m.Group("/{username}", func() {

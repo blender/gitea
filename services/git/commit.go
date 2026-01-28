@@ -87,6 +87,11 @@ func ParseCommitsWithStatus(ctx context.Context, oldCommits []*asymkey_model.Sig
 	newCommits := make([]*git_model.SignCommitWithStatuses, 0, len(oldCommits))
 	for _, c := range oldCommits {
 		statuses := statusMap[c.GitCommit.ID.String()]
+
+		// BLENDER: contributor agreement
+		// hide clacheck statuses on individual PR commits
+		statuses = HideClacheckStatus(statuses)
+
 		newCommits = append(newCommits, &git_model.SignCommitWithStatuses{
 			SignCommit: c,
 			Statuses:   statuses,

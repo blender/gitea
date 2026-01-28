@@ -1,0 +1,35 @@
+{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
+
+<div class="admin-setting-content">
+	<h4 class="ui top attached header">
+		{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign"}}
+	</h4>
+	<div class="ui attached segment">
+		{{if .Error}}
+			<div class="ui error message">{{.Error}}</div>
+		{{end}}
+		<form class="ui form" method="post">
+			{{.CsrfTokenHtml}}
+			<label>
+				{{ctx.Locale.Tr "admin.signed_contributor_agreements.slug"}}
+				<select name="contributor_agreement_id" required>
+					<option value="">--</option>
+					{{range .ContributorAgreements}}
+						<option value="{{.ID}}" {{if eq .ID $.ContributorAgreementID}}selected{{end}}>{{.Slug}}</option>
+					{{end}}
+				</select>
+			</label>
+			<label>
+				{{ctx.Locale.Tr "admin.signed_contributor_agreements.usernames_input"}}
+				<textarea name="usernames" required>{{.Usernames}}</textarea>
+			</label>
+			<label>
+				{{ctx.Locale.Tr "admin.signed_contributor_agreements.comment"}}
+				<textarea name="comment" required>{{.Comment}}</textarea>
+			</label>
+			<button class="ui button tw-mt-4" type="submit">{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign_button"}}</button>
+		</form>
+	</div>
+</div>
+
+{{template "admin/layout_footer" .}}

@@ -268,7 +268,7 @@ func NotificationSubscriptions(ctx *context.Context) {
 		return
 	}
 
-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
+	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
 	if err != nil {
 		ctx.ServerError("GetIssuesAllCommitStatus", err)
 		return

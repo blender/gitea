@@ -392,6 +392,10 @@ func Diff(ctx *context.Context) {
 		git_model.CommitStatusesHideActionsURL(ctx, statuses)
 	}
 
+	// BLENDER: contributor agreement
+	// hide clacheck statuses on individual PR commits
+	statuses = git_service.HideClacheckStatus(statuses)
+
 	ctx.Data["CommitStatus"] = git_model.CalcCommitStatus(statuses)
 	ctx.Data["CommitStatuses"] = statuses
 

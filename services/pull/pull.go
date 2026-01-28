@@ -934,7 +934,10 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
 }
 
 // GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status
-func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
+// BLENDER: contributor agreement
+// Modified func signature, all callers that render a list of PRs need to pass
+// skipClacheck=false.
+func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
 	if err := issues.LoadPullRequests(ctx); err != nil {
 		return nil, nil, err
 	}
@@ -968,7 +971,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
 			gitRepos[issue.RepoID] = gitRepo
 		}
 
-		statuses, lastStatus, err := getAllCommitStatus(ctx, gitRepo, issue.PullRequest)
+		// BLENDER: contributor agreement
+		statuses, lastStatus, err := getAllCommitStatus(ctx, gitRepo, issue.PullRequest, skipClacheck)
 		if err != nil {
 			log.Error("getAllCommitStatus: cant get commit statuses of pull [%d]: %v", issue.PullRequest.ID, err)
 			continue
@@ -980,13 +984,22 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
 }
 
 // getAllCommitStatus get pr's commit statuses.
-func getAllCommitStatus(ctx context.Context, gitRepo *git.Repository, pr *issues_model.PullRequest) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
+// BLENDER: contributor agreement, modified func signature
+func getAllCommitStatus(ctx context.Context, gitRepo *git.Repository, pr *issues_model.PullRequest, skipClacheck bool) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
 	sha, shaErr := gitRepo.GetRefCommitID(pr.GetGitHeadRefName())
 	if shaErr != nil {
 		return nil, nil, shaErr
 	}
 
 	statuses, err = git_model.GetLatestCommitStatus(ctx, pr.BaseRepo.ID, sha, db.ListOptionsAll)
+
+	// BLENDER: contributor agreement
+	// Filter out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere:
+	// https://projects.blender.org/infrastructure/meta/issues/208
+	if skipClacheck {
+		statuses = git_service.HideClacheckStatus(statuses)
+	}
+
 	lastStatus = git_model.CalcCommitStatus(statuses)
 	return statuses, lastStatus, err
 }

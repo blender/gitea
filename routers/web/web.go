@@ -687,6 +687,9 @@ func registerWebRoutes(m *web.Router) {
 
 		// BLENDER: spam reporting
 		m.Post("/spamreport", user_setting.SpamReportUserPost)
+		// BLENDER: contributor agreement
+		m.Get("/contributor_agreements", user_setting.ContributorAgreements)
+		m.Post("/contributor_agreements/{slug}/sign", user_setting.SignContributorAgreement)
 	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled, "EnableNotifyMail", setting.Service.EnableNotifyMail))
 
 	m.Group("/user", func() {
@@ -766,6 +769,12 @@ func registerWebRoutes(m *web.Router) {
 			m.Post("", admin.SpamReportsPost)
 		})
 		m.Post("/purge_spammer", admin.PurgeSpammerPost)
+
+		// BLENDER: contributor agreement
+		m.Group("/signed_contributor_agreements", func() {
+			m.Get("", admin.SignedContributorAgreements)
+			m.Combo("/batch_sign").Get(admin.ContributorAgreementsBatchSign).Post(admin.ContributorAgreementsBatchSignPost)
+		})
 
 		m.Group("/orgs", func() {
 			m.Get("", admin.Organizations)

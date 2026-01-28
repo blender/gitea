@@ -350,6 +350,20 @@ func GetLatestCommitStatus(ctx context.Context, repoID int64, sha string, listOp
 		return statuses, nil
 	}
 	err := makeRepoCommitQuery(ctx, repoID, sha).And(builder.In("`index`", indices)).Find(&statuses)
+
+	// BLENDER: contributor agreement
+	// Filter out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere:
+	// https://projects.blender.org/infrastructure/meta/issues/208
+	var clacheckIndex = -1
+	for i, s := range statuses {
+		if s.State.IsSuccess() && strings.Contains(s.Context, "clacheck") {
+			clacheckIndex = i
+		}
+	}
+	if clacheckIndex != -1 {
+		statuses = append(statuses[:clacheckIndex], statuses[clacheckIndex + 1:]...)
+	}
+
 	return statuses, err
 }
 

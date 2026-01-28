@@ -100,6 +100,8 @@ func deleteUser(ctx context.Context, u *user_model.User, purge bool) (err error)
 		&auth_model.WebAuthnCredential{UserID: u.ID},
 		&activities_model.Notification{UserID: u.ID},
 		&issues_model.IssueWatch{UserID: u.ID},
+		// BLENDER: contributor agreement
+		&user_model.SignedContributorAgreement{UserID: u.ID},
 	); err != nil {
 		return fmt.Errorf("deleteBeans: %w", err)
 	}

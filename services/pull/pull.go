@@ -907,9 +907,12 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
 	return util.UnsafeBytesToString(buf)
 }
 
-// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
-// The returned statuses are redacted for doer.
-func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
+	// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
+	// The returned statuses are redacted for doer.
+	// BLENDER: contributor agreement
+	// Modified func signature, all callers that render a list of PRs need to pass
+	// skipClacheck=false.
+	func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
 	if err := issues.LoadPullRequests(ctx); err != nil {
 		return nil, nil, err
 	}
@@ -943,7 +946,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
 			gitRepos[issue.RepoID] = gitRepo
 		}
 
-		statuses, lastStatus, err := getAllCommitStatus(ctx, doer, gitRepo, issue.PullRequest)
+		// BLENDER: contributor agreement
+		statuses, lastStatus, err := getAllCommitStatus(ctx, doer, gitRepo, issue.PullRequest, skipClacheck)
 		if err != nil {
 			log.Error("getAllCommitStatus: cant get commit statuses of pull [%d]: %v", issue.PullRequest.ID, err)
 			continue
@@ -955,7 +959,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
 }
 
 // getAllCommitStatus get pr's commit statuses.
-func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git.Repository, pr *issues_model.PullRequest) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
+// BLENDER: contributor agreement, modified func signature
+func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git.Repository, pr *issues_model.PullRequest, skipClacheck bool) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
 	sha, shaErr := gitRepo.GetRefCommitID(ctx, pr.GetGitHeadRefName())
 	if shaErr != nil {
 		return nil, nil, shaErr
@@ -965,6 +970,14 @@ func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git
 	for _, status := range statuses {
 		status.Repo = pr.BaseRepo // the repo is already loaded, spare the permission lookup a query
 	}
+
+	// BLENDER: contributor agreement
+	// Filter out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere:
+	// https://projects.blender.org/infrastructure/meta/issues/208
+	if skipClacheck {
+		statuses = git_service.HideClacheckStatus(statuses)
+	}
+
 	// CalcCommitStatus copies a TargetURL out of the statuses, so hide before combining
 	git_model.CommitStatusesApplyDoerPermission(ctx, doer, statuses)
 	lastStatus = git_model.CalcCommitStatus(statuses)

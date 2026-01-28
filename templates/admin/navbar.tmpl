@@ -13,7 +13,7 @@
 				</a>
 			</div>
 		</details>
-		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
+		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports .PageIsSignedContributorAgreements}}open{{end}}>
 			<summary>{{ctx.Locale.Tr "admin.identity_access"}}</summary>
 			<div class="menu">
 				<a class="{{if .PageIsAdminAuthentications}}active {{end}}item" href="{{AppSubUrl}}/-/admin/auths">
@@ -33,6 +33,9 @@
 				</a>
 				<a class="{{if .PageIsSpamReports}}active {{end}}item" href="{{AppSubUrl}}/-/admin/spamreports">
 					{{ctx.Locale.Tr "admin.spamreports"}}
+				</a>
+				<a class="{{if .PageIsSignedContributorAgreements}}active {{end}}item" href="{{AppSubUrl}}/-/admin/signed_contributor_agreements">
+					{{ctx.Locale.Tr "admin.signed_contributor_agreements"}}
 				</a>
 			</div>
 		</details>

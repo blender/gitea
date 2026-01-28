@@ -20703,6 +20703,42 @@
         }
       }
     },
+    "/users/{username}/contributor-agreements/{slug}": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "user"
+        ],
+        "summary": "Check if contributor agreement is signed by the user",
+        "operationId": "userCheckContributorAgreement",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "username of user",
+            "name": "username",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "slug of a contributor agreement to check",
+            "name": "slug",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/string"
+          },
+          "404": {
+            "$ref": "#/responses/notFound"
+          }
+        }
+      }
+    },
     "/users/{username}/followers": {
       "get": {
         "produces": [

@@ -1,17 +1,17 @@
-From e667234f8cc2554cde1dc8be6db441e8e267130f Mon Sep 17 00:00:00 2001
+From 368eb51c37cbdbe944a87d6759ab443d8f29f871 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Thu, 12 Jun 2025 14:43:47 +0200
-Subject: [PATCH 16/19] BLENDER: Fine tune pages considered expensive
+Subject: [PATCH 16/20] BLENDER: Fine tune pages considered expensive
 
 ---
  routers/common/blockexpensive.go | 25 +++++++++++++------------
  1 file changed, 13 insertions(+), 12 deletions(-)
 
 diff --git a/routers/common/blockexpensive.go b/routers/common/blockexpensive.go
-index f52aa2b709..461a03179e 100644
+index ebec0a2e5b..33b082cad1 100644
 --- a/routers/common/blockexpensive.go
 +++ b/routers/common/blockexpensive.go
-@@ -40,23 +40,24 @@ func isRoutePathExpensive(routePattern string) bool {
+@@ -40,25 +40,26 @@ func isRoutePathExpensive(routePattern string) bool {
  
  	expensivePaths := []string{
  		// code related
@@ -20,15 +20,17 @@ index f52aa2b709..461a03179e 100644
  		"/{username}/{reponame}/blame/",
 -		"/{username}/{reponame}/commit/",
 -		"/{username}/{reponame}/commits/",
++		// "/{username}/{reponame}/commit/",
++		// "/{username}/{reponame}/commits/",
+ 		"/{username}/{reponame}/compare/",
 -		"/{username}/{reponame}/graph",
 -		"/{username}/{reponame}/media/",
 -		"/{username}/{reponame}/raw/",
--		"/{username}/{reponame}/src/",
-+		// "/{username}/{reponame}/commit/",
-+		// "/{username}/{reponame}/commits/",
 +		// "/{username}/{reponame}/graph",
 +		// "/{username}/{reponame}/media/",
 +		// "/{username}/{reponame}/raw/",
+ 		"/{username}/{reponame}/rss/branch/",
+-		"/{username}/{reponame}/src/",
 +		// "/{username}/{reponame}/src/",
 +		"/{username}/{reponame}/compare/",
  
@@ -49,5 +51,5 @@ index f52aa2b709..461a03179e 100644
  		// activity
  		"/{username}/{reponame}/activity/",
 -- 
-2.51.0
+2.49.0
 

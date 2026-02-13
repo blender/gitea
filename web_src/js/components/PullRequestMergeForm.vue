@@ -76,6 +76,17 @@ function switchMergeStyle(name: string, autoMerge = false) {
 function clearMergeMessage() {
   mergeMessageFieldValue.value = mergeForm.defaultMergeMessage;
 }
+
+function updateCursorStats(e) {
+  const t = e.target;
+  const p = t.selectionStart;
+  const txt = t.value;
+  const lines = txt.substr(0, p).split('\n');
+  const ln = lines.length;
+  const col = lines[ln - 1].length + 1;
+  const words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
+  t.nextElementSibling.innerHTML = `Ln ${ln} · Words ${words} · Col ${col}`;
+}
 </script>
 
 <template>
@@ -103,8 +114,12 @@ function clearMergeMessage() {
         <div class="field">
           <input type="text" name="merge_title_field" v-model="mergeTitleFieldValue">
         </div>
-        <div class="field">
-          <textarea name="merge_message_field" rows="5" :placeholder="mergeForm.mergeMessageFieldPlaceHolder" v-model="mergeMessageFieldValue"/>
+        <div class="field" style="position: relative;">
+          <textarea name="merge_message_field" rows="5" :placeholder="mergeForm.mergeMessageFieldPlaceHolder" v-model="mergeMessageFieldValue"
+            class="merge-message-textarea"
+            @keyup="updateCursorStats"
+            @click="updateCursorStats" />
+          <div style="position:absolute;bottom:4px;right:8px;font-size:11px;color:#666;pointer-events:none;">Ln 1 · Words 0 · Col 1</div>
           <template v-if="mergeMessageFieldValue !== mergeForm.defaultMergeMessage">
             <button @click.prevent="clearMergeMessage" class="btn tw-mt-1 tw-p-1 interact-fg" :data-tooltip-content="mergeForm.textClearMergeMessageHint">
               {{ mergeForm.textClearMergeMessage }}
@@ -245,6 +260,14 @@ function clearMergeMessage() {
 
 .auto-merge-small:hover .auto-merge-tip {
   display: flex;
+}
+
+/* merge message textarea with 72 character line indicator */
+.merge-message-textarea {
+  font-family: monospace !important;
+  background-image: linear-gradient(to right, transparent 0, transparent calc(73.5ch), rgba(255, 68, 68, 0.3) calc(73.5ch), rgba(255, 68, 68, 0.3) calc(73.5ch + 2px), transparent calc(73.5ch + 2px)) !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
 }
 
 </style>

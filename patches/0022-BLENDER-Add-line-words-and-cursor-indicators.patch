@@ -1,0 +1,62 @@
+From e1c42d3e2658c0d3980dac8e0f33dc36dfdeab77 Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@vanderbraak.nl>
+Date: Fri, 13 Feb 2026 17:13:05 +0100
+Subject: [PATCH] BLENDER: Add line, words and cursor indicators
+
+---
+ .../js/components/PullRequestMergeForm.vue    | 27 +++++++++++++++++--
+ 1 file changed, 25 insertions(+), 2 deletions(-)
+
+diff --git a/web_src/js/components/PullRequestMergeForm.vue b/web_src/js/components/PullRequestMergeForm.vue
+index b2c28414c0..127212393c 100644
+--- a/web_src/js/components/PullRequestMergeForm.vue
++++ b/web_src/js/components/PullRequestMergeForm.vue
+@@ -76,6 +76,17 @@ function switchMergeStyle(name: string, autoMerge = false) {
+ function clearMergeMessage() {
+   mergeMessageFieldValue.value = mergeForm.defaultMergeMessage;
+ }
++
++function updateCursorStats(e) {
++  const t = e.target;
++  const p = t.selectionStart;
++  const txt = t.value;
++  const lines = txt.substr(0, p).split('\n');
++  const ln = lines.length;
++  const col = lines[ln - 1].length + 1;
++  const words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
++  t.nextElementSibling.innerHTML = `Ln ${ln} · Words ${words} · Col ${col}`;
++}
+ </script>
+ 
+ <template>
+@@ -104,8 +115,12 @@ function clearMergeMessage() {
+         <div class="field">
+           <input type="text" name="merge_title_field" v-model="mergeTitleFieldValue">
+         </div>
+-        <div class="field">
+-          <textarea name="merge_message_field" rows="5" :placeholder="mergeForm.mergeMessageFieldPlaceHolder" v-model="mergeMessageFieldValue"/>
++        <div class="field" style="position: relative;">
++          <textarea name="merge_message_field" rows="5" :placeholder="mergeForm.mergeMessageFieldPlaceHolder" v-model="mergeMessageFieldValue"
++            class="merge-message-textarea"
++            @keyup="updateCursorStats"
++            @click="updateCursorStats" />
++          <div style="position:absolute;bottom:4px;right:8px;font-size:11px;color:#666;pointer-events:none;">Ln 1 · Words 0 · Col 1</div>
+           <template v-if="mergeMessageFieldValue !== mergeForm.defaultMergeMessage">
+             <button @click.prevent="clearMergeMessage" class="btn tw-mt-1 tw-p-1 interact-fg" :data-tooltip-content="mergeForm.textClearMergeMessageHint">
+               {{ mergeForm.textClearMergeMessage }}
+@@ -249,4 +264,12 @@ function clearMergeMessage() {
+   display: flex;
+ }
+ 
++/* merge message textarea with 72 character line indicator */
++.merge-message-textarea {
++  font-family: monospace !important;
++  background-image: linear-gradient(to right, transparent 0, transparent calc(72ch), rgba(255, 68, 68, 0.3) calc(72ch), rgba(255, 68, 68, 0.3) calc(72ch + 2px), transparent calc(72ch + 2px)) !important;
++  background-size: 100% 100% !important;
++  background-repeat: no-repeat !important;
++}
++
+ </style>
+-- 
+2.49.0
+

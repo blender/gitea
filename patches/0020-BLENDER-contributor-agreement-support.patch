@@ -872,7 +872,7 @@ index 0000000000..3d621c2d18
 +									{{ctx.Locale.Tr "contributor_agreements.view"}}
 +								{{end}}
 +							</summary>
-+							<pre>{{.Content}}</pre>
++							<pre style="white-space: pre-wrap; font-family: inherit">{{.Content}}</pre>
 +							{{if not .SignedAt}}
 +								<form method="post" action="{{AppSubUrl}}/user/settings/contributor_agreements/{{.Slug}}/sign" class="ui form">
 +									{{$.CsrfTokenHtml}}

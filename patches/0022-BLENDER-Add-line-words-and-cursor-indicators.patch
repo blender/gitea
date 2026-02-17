@@ -51,7 +51,7 @@ index b2c28414c0..127212393c 100644
 +/* merge message textarea with 72 character line indicator */
 +.merge-message-textarea {
 +  font-family: monospace !important;
-+  background-image: linear-gradient(to right, transparent 0, transparent calc(72.5ch), rgba(255, 68, 68, 0.3) calc(72.5ch), rgba(255, 68, 68, 0.3) calc(72.5ch + 2px), transparent calc(72.5ch + 2px)) !important;
++  background-image: linear-gradient(to right, transparent 0, transparent calc(73.5ch), rgba(255, 68, 68, 0.3) calc(73.5ch), rgba(255, 68, 68, 0.3) calc(73.5ch + 2px), transparent calc(73.5ch + 2px)) !important;
 +  background-size: 100% 100% !important;
 +  background-repeat: no-repeat !important;
 +}

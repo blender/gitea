@@ -272,10 +272,10 @@ index 0000000000..7744c66e18
 +}
 diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
 new file mode 100644
-index 0000000000..732898b4d3
+index 0000000000..c994bd787b
 --- /dev/null
 +++ b/routers/web/admin/signed_contributor_agreements.go
-@@ -0,0 +1,202 @@
+@@ -0,0 +1,201 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -461,11 +461,10 @@ index 0000000000..732898b4d3
 +	}
 +
 +	insertSCA := make([]*user_model.SignedContributorAgreement, len(userIDs))
-+	commentWithPrefix := fmt.Sprintf("batch signed: %s", comment)
 +	for i, userID := range userIDs {
 +		insertSCA[i] = &user_model.SignedContributorAgreement{
 +			ContributorAgreementID: contributorAgreementID,
-+			Comment:                commentWithPrefix,
++			Comment:                comment,
 +			UserID:                 userID,
 +		}
 +	}
@@ -480,10 +479,10 @@ index 0000000000..732898b4d3
 +}
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..0513deb4a3
+index 0000000000..2593c1213e
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,146 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -526,20 +525,24 @@ index 0000000000..0513deb4a3
 +		ctx.ServerError("FindSignedContributorAgreements", err)
 +		return
 +	}
-+	signedID2Timestamp := make(map[int64]timeutil.TimeStamp)
++	id2sca := make(map[int64]*user_model.SignedContributorAgreement)
 +	for _, sca := range signedContributorAgreements {
-+		signedID2Timestamp[sca.ContributorAgreementID] = sca.CreatedUnix
++		id2sca[sca.ContributorAgreementID] = sca
 +	}
 +	type UserContributorAgreement struct {
 +		user_model.ContributorAgreement
++		Comment  string
 +		SignedAt timeutil.TimeStamp
 +	}
 +	userContributorAgreements := make([]*UserContributorAgreement, len(contributorAgreements))
 +	for i, ca := range contributorAgreements {
 +		var uca UserContributorAgreement
-+		uca.ContributorAgreement = *ca
-+		uca.SignedAt = signedID2Timestamp[ca.ID]
 +		userContributorAgreements[i] = &uca
++		uca.ContributorAgreement     = *ca
++		if sca, has := id2sca[ca.ID]; has {
++			uca.Comment  = sca.Comment
++			uca.SignedAt = sca.CreatedUnix
++		}
 +	}
 +
 +	ctx.Data["ContributorAgreements"] = userContributorAgreements
@@ -691,7 +694,7 @@ index 6cee23f79c..8f1ae3b0e4 100644
  		<details class="item toggleable-item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
 diff --git a/templates/admin/signed_contributor_agreements/batch_sign.tmpl b/templates/admin/signed_contributor_agreements/batch_sign.tmpl
 new file mode 100644
-index 0000000000..6980bd9329
+index 0000000000..9fe5dabc8f
 --- /dev/null
 +++ b/templates/admin/signed_contributor_agreements/batch_sign.tmpl
 @@ -0,0 +1,35 @@
@@ -722,7 +725,7 @@ index 0000000000..6980bd9329
 +			</label>
 +			<label>
 +				{{ctx.Locale.Tr "admin.signed_contributor_agreements.comment"}}
-+				<textarea name="comment">{{.Comment}}</textarea>
++				<textarea name="comment" required>{{.Comment}}</textarea>
 +			</label>
 +			<button class="ui button tw-mt-4" type="submit">{{ctx.Locale.Tr "admin.signed_contributor_agreements.batch_sign_button"}}</button>
 +		</form>
@@ -845,7 +848,7 @@ index ef0d607e3d..92fe29bcdd 100644
          "produces": [
 diff --git a/templates/user/settings/contributor_agreements.tmpl b/templates/user/settings/contributor_agreements.tmpl
 new file mode 100644
-index 0000000000..3d621c2d18
+index 0000000000..6276dd5b7b
 --- /dev/null
 +++ b/templates/user/settings/contributor_agreements.tmpl
 @@ -0,0 +1,45 @@
@@ -861,7 +864,7 @@ index 0000000000..3d621c2d18
 +						<div class="tw-mb-2">
 +							<h4 class="ui header"><strong>{{.Slug}}</strong></h4>
 +							{{if .SignedAt}}
-+								<div class="text light-3">{{ctx.Locale.Tr "contributor_agreements.signed_at" (DateUtils.FullTime .SignedAt)}}</div>
++								<div class="text light-3">{{if .Comment}}{{.Comment}}{{else}}{{ctx.Locale.Tr "contributor_agreements.signed_at" (DateUtils.FullTime .SignedAt)}}{{end}}</div>
 +							{{end}}
 +						</div>
 +						<details>

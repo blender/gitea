@@ -110,6 +110,12 @@ func PullRequestCodeOwnersReview(ctx context.Context, pr *issues_model.PullReque
 
 	notifiers := make([]*ReviewRequestNotifier, 0, len(uniqUsers)+len(uniqTeams))
 
+	// BLENDER: Don't assign code owners if there are too many, typically this
+	// comes from accidents with rebase or branch targetting.
+	if len(uniqUsers)+len(uniqTeams) > 10 {
+		return nil, nil
+	}
+
 	if err := issue.LoadPoster(ctx); err != nil {
 		return nil, err
 	}

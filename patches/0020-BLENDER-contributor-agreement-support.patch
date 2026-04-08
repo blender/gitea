@@ -1,4 +1,4 @@
-From dba69c9f90c8dcbe8704520777fa9dca7fa8d4cf Mon Sep 17 00:00:00 2001
+From 1b5c1160b67d3c345f8cea05eadc86863cc9ed22 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
 Subject: [PATCH] BLENDER: contributor agreement support
@@ -30,9 +30,9 @@ automatically posts a pull request comment when a check fails:
  models/user/contributor_agreement.go          |  62 ++++++
  options/locale/locale_en-US.ini               |  21 ++
  routers/api/v1/api.go                         |   2 +
- routers/api/v1/user/contributor_agreement.go  |  83 +++++++
- .../admin/signed_contributor_agreements.go    | 202 ++++++++++++++++++
- .../user/setting/contributor_agreements.go    | 142 ++++++++++++
+ routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
+ .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
+ .../user/setting/contributor_agreements.go    | 158 ++++++++++++++
  routers/web/web.go                            |   9 +
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
@@ -41,7 +41,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 706 insertions(+), 1 deletion(-)
+ 14 files changed, 721 insertions(+), 1 deletion(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -169,7 +169,7 @@ index fe1a1df858..b6f8842cf0 100644
 +view_and_sign = View text and sign
 +view = View text
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index 355ef703c2..e98765ca72 100644
+index 2e7f057659..28401506f5 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
 @@ -1025,6 +1025,8 @@ func Routes() *web.Router {
@@ -479,10 +479,10 @@ index 0000000000..c994bd787b
 +}
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..2593c1213e
+index 0000000000..17f13adf66
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,158 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -563,19 +563,34 @@ index 0000000000..2593c1213e
 +		ctx.PlainText(http.StatusNotFound, "unknown contributor agreement")
 +		return
 +	}
-+	if err := db.Insert(ctx, &user_model.SignedContributorAgreement{UserID: ctx.Doer.ID, ContributorAgreementID: ca.ID}); err != nil {
++	// Prefer to fail on duplicate submission (e.g. when a user hits the button twice).
++	// If rerunFailedActions fails, we won't allow to re-enter the flow and
++	// - either a manual re-run by an admin
++	// - or a re-trigger by the workflow conditions would be required.
++	sca := user_model.SignedContributorAgreement{UserID: ctx.Doer.ID, ContributorAgreementID: ca.ID}
++	if err := db.Insert(ctx, &sca); err != nil {
 +		ctx.ServerError("SignContributorAgreement", err)
 +		return
 +	}
-+	// Check if there are any recent action run failures, trigger a re-run.
-+	if err := rerunFailedActions(ctx, ctx.Doer); err != nil {
-+		log.Error("rerunFailedActions for userID=%d failed: %v", ctx.Doer.ID, err)
++	// Check if there are any recent action run failures and trigger a re-run.
++	// Execute all updates transactionally, otherwise an ActionRun may be left in Waiting status indefinitely
++	// when UpdateRun is called but UpdateRunJob is not, e.g. due to request being cancelled by a user.
++	//
++	// Currently it seems better not to couple signing and rerun in a single transaction,
++	// to make sure that nothing interferes with storing of the sca record.
++	// Theoretically a rerun may be processed asynchronously.
++	doer := ctx.Doer
++	if err := db.WithTx(ctx, func(ctx context.Context) error {
++		return rerunFailedActions(ctx, doer)
++	}); err != nil {
++		log.Error("rerunFailedActions for userID=%d failed: %v", doer.ID, err)
 +	}
 +	ctx.Redirect(setting.AppSubURL + "/user/settings/contributor_agreements")
 +}
 +
 +// rerunFailedActions looks for recent cla.yml failures triggered by the user and reruns those.
-+func rerunFailedActions(ctx *gitea_context.Context, user *user_model.User) error {
++// It doesn't pick up runs that were initiated by someone else, e.g. when synchronizing a PR with a target branch.
++func rerunFailedActions(ctx context.Context, user *user_model.User) error {
 +	runs, err := db.Find[actions_model.ActionRun](ctx, actions_model.FindRunOptions{
 +		ListOptions:   db.ListOptions{PageSize: 10},
 +		Status:        []actions_model.Status{actions_model.StatusFailure},
@@ -616,11 +631,8 @@ index 0000000000..2593c1213e
 +		job.Status = actions_model.StatusWaiting
 +		job.Started = 0
 +		job.Stopped = 0
-+		if err := db.WithTx(ctx, func(ctx context.Context) error {
-+			_, err := actions_model.UpdateRunJob(ctx, job, builder.Eq{"status": status}, "task_id", "status", "started", "stopped")
-+			return err
-+		}); err != nil {
-+			return err
++		if _, err := actions_model.UpdateRunJob(ctx, job, builder.Eq{"status": status}, "task_id", "status", "started", "stopped"); err != nil {
++			return fmt.Errorf("UpdateRunJob failed for job.ID=%d: %w", job.ID, err)
 +		}
 +
 +		actions_service.CreateCommitStatus(ctx, job)
@@ -911,5 +923,5 @@ index 34e089a68a..eba9f16888 100644
  	</div>
  </div>
 -- 
-2.48.1
+2.51.0
 

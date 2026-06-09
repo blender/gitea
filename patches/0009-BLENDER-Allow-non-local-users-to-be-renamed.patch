@@ -1,37 +1,35 @@
-From 490ef60df54bb022b6d7ebf546f5a1a44aca6917 Mon Sep 17 00:00:00 2001
+From 4426396a65a447dbd757967d5e23ceb048dad75b Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:05:47 +0200
-Subject: [PATCH 09/19] BLENDER: Allow non-local users to be renamed
+Subject: [PATCH 09/22] BLENDER: Allow non-local users to be renamed
 
 For Blender ID hook to do this.
 ---
- services/user/user.go | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ services/user/user.go | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/services/user/user.go b/services/user/user.go
-index d8abf199c3..d0a7ec64b3 100644
+index 9b8bcf83c0..a877ef0354 100644
 --- a/services/user/user.go
 +++ b/services/user/user.go
-@@ -37,12 +37,13 @@ func RenameUser(ctx context.Context, u *user_model.User, newUserName string) err
+@@ -36,11 +36,12 @@ func RenameUser(ctx context.Context, u *user_model.User, newUserName string, doe
+ 		return nil
  	}
  
- 	// Non-local users are not allowed to change their username.
--	if !u.IsOrganization() && !u.IsLocal() {
--		return user_model.ErrUserIsNotLocal{
--			UID:  u.ID,
--			Name: u.Name,
--		}
+-	// Non-local users are not allowed to change their own username, but admins are
+-	isExternalUser := !u.IsOrganization() && !u.IsLocal()
+-	if isExternalUser && !doer.IsAdmin {
+-		return user_model.ErrUserIsNotLocal{UID: u.ID, Name: u.Name}
 -	}
-+	// BLENDER: allow renaming local users.
-+	//if !u.IsOrganization() && !u.IsLocal() {
-+	//	return user_model.ErrUserIsNotLocal{
-+	//		UID:  u.ID,
-+	//		Name: u.Name,
-+	//	}
++	// Non-local users are not allowed to change their own username, but admins are.
++	// BLENDER: allow renaming non-local users.
++	//isExternalUser := !u.IsOrganization() && !u.IsLocal()
++	//if isExternalUser && !doer.IsAdmin {
++	//	return user_model.ErrUserIsNotLocal{UID: u.ID, Name: u.Name}
 +	//}
  
  	if err := user_model.IsUsableUsername(newUserName); err != nil {
  		return err
 -- 
-2.51.0
+2.47.3
 

@@ -1,42 +1,31 @@
-From 202618bf290c3eb539b0e12e28f289c05dfbd16c Mon Sep 17 00:00:00 2001
+From bf924a9085b24967a129800d50b65e9abec1cd75 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:07:25 +0200
-Subject: [PATCH 10/19] BLENDER: Workaround internal server error comparing
+Subject: [PATCH 10/22] BLENDER: Workaround internal server error comparing
  branches on some repos
 
 https://projects.blender.org/infrastructure/blender-projects-platform/issues/61
 
 And add trace log for investigation.
 ---
- modules/git/repo_compare.go | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ modules/gitrepo/fetch.go | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/modules/git/repo_compare.go b/modules/git/repo_compare.go
-index 69a7314d5c..2efeb325e8 100644
---- a/modules/git/repo_compare.go
-+++ b/modules/git/repo_compare.go
-@@ -18,6 +18,7 @@ import (
- 	"strings"
- 
- 	"code.gitea.io/gitea/modules/git/gitcmd"
-+	logger "code.gitea.io/gitea/modules/log"
- )
- 
- // GetMergeBase checks and returns merge base of two branches and the reference used as base.
-@@ -29,9 +30,12 @@ func (repo *Repository) GetMergeBase(tmpRemote, base, head string) (string, stri
- 	if tmpRemote != "origin" {
- 		tmpBaseName := RemotePrefix + tmpRemote + "/tmp_" + base
- 		// Fetch commit into a temporary branch in order to be able to handle commits and tags
--		_, _, err := gitcmd.NewCommand("fetch", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &gitcmd.RunOpts{Dir: repo.Path})
-+		// --no-write-commit-graph works around issue with commit-graph-chain.lock files that should not be there.
-+		_, _, err := gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").AddDynamicArguments(tmpRemote).AddDashesAndList(base+":"+tmpBaseName).RunStdString(repo.Ctx, &gitcmd.RunOpts{Dir: repo.Path})
- 		if err == nil {
- 			base = tmpBaseName
-+		} else {
-+			logger.Trace("GetMergeBase failed to git fetch. Error: %v", err)
- 		}
- 	}
- 
+diff --git a/modules/gitrepo/fetch.go b/modules/gitrepo/fetch.go
+index 0474d6111e..4b9da54239 100644
+--- a/modules/gitrepo/fetch.go
++++ b/modules/gitrepo/fetch.go
+@@ -21,7 +21,9 @@ import (
+ // merge base between commits.
+ func FetchRemoteCommit(ctx context.Context, repo, remoteRepo Repository, commitID string) error {
+ 	return globallock.LockAndDo(ctx, getRepoWriteLockKey(repo.RelativePath()), func(ctx context.Context) error {
+-		return RunCmd(ctx, repo, gitcmd.NewCommand("fetch", "--no-tags").
++		// BLENDER: --no-write-commit-graph works around internal server errors comparing
++		// branches on some repos, caused by commit-graph-chain.lock files that should not be there.
++		return RunCmd(ctx, repo, gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").
+ 			AddDynamicArguments(repoPath(remoteRepo)).
+ 			AddDynamicArguments(commitID))
+ 	})
 -- 
-2.51.0
+2.47.3
 

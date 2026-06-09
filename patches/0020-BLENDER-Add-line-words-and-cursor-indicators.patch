@@ -1,14 +1,14 @@
-From e1c42d3e2658c0d3980dac8e0f33dc36dfdeab77 Mon Sep 17 00:00:00 2001
+From 82eb680e62325582546ec0073a64d7bf1632ff03 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@vanderbraak.nl>
 Date: Fri, 13 Feb 2026 17:13:05 +0100
-Subject: [PATCH] BLENDER: Add line, words and cursor indicators
+Subject: [PATCH 20/22] BLENDER: Add line, words and cursor indicators
 
 ---
  .../js/components/PullRequestMergeForm.vue    | 27 +++++++++++++++++--
  1 file changed, 25 insertions(+), 2 deletions(-)
 
 diff --git a/web_src/js/components/PullRequestMergeForm.vue b/web_src/js/components/PullRequestMergeForm.vue
-index b2c28414c0..127212393c 100644
+index 7ae8fbfdaf..e6eabe348d 100644
 --- a/web_src/js/components/PullRequestMergeForm.vue
 +++ b/web_src/js/components/PullRequestMergeForm.vue
 @@ -76,6 +76,17 @@ function switchMergeStyle(name: string, autoMerge = false) {
@@ -29,7 +29,7 @@ index b2c28414c0..127212393c 100644
  </script>
  
  <template>
-@@ -104,8 +115,12 @@ function clearMergeMessage() {
+@@ -103,8 +114,12 @@ function clearMergeMessage() {
          <div class="field">
            <input type="text" name="merge_title_field" v-model="mergeTitleFieldValue">
          </div>
@@ -44,7 +44,7 @@ index b2c28414c0..127212393c 100644
            <template v-if="mergeMessageFieldValue !== mergeForm.defaultMergeMessage">
              <button @click.prevent="clearMergeMessage" class="btn tw-mt-1 tw-p-1 interact-fg" :data-tooltip-content="mergeForm.textClearMergeMessageHint">
                {{ mergeForm.textClearMergeMessage }}
-@@ -249,4 +264,12 @@ function clearMergeMessage() {
+@@ -247,4 +262,12 @@ function clearMergeMessage() {
    display: flex;
  }
  
@@ -58,5 +58,5 @@ index b2c28414c0..127212393c 100644
 +
  </style>
 -- 
-2.49.0
+2.47.3
 

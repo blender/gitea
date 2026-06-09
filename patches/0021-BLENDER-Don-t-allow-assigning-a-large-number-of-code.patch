@@ -1,0 +1,32 @@
+From 82b2eda7b88777fe04c1eb39cfdd41fdb743ff3c Mon Sep 17 00:00:00 2001
+From: Brecht Van Lommel <brecht@blender.org>
+Date: Fri, 13 Mar 2026 20:00:09 +0100
+Subject: [PATCH 21/22] BLENDER: Don't allow assigning a large number of code
+ owners
+
+To avoid accidentally spamming many developers with a wrong rebase or
+target branch.
+---
+ services/issue/pull.go | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/services/issue/pull.go b/services/issue/pull.go
+index f415ebe759..8453851aa9 100644
+--- a/services/issue/pull.go
++++ b/services/issue/pull.go
+@@ -110,6 +110,12 @@ func PullRequestCodeOwnersReview(ctx context.Context, pr *issues_model.PullReque
+ 
+ 	notifiers := make([]*ReviewRequestNotifier, 0, len(uniqUsers)+len(uniqTeams))
+ 
++	// BLENDER: Don't assign code owners if there are too many, typically this
++	// comes from accidents with rebase or branch targetting.
++	if len(uniqUsers)+len(uniqTeams) > 10 {
++		return nil, nil
++	}
++
+ 	if err := issue.LoadPoster(ctx); err != nil {
+ 		return nil, err
+ 	}
+-- 
+2.47.3
+

@@ -1,7 +1,7 @@
-From 1b5c1160b67d3c345f8cea05eadc86863cc9ed22 Mon Sep 17 00:00:00 2001
+From fda629c1565583fcc0aceb86b9a94d3baebe82b1 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
-Subject: [PATCH] BLENDER: contributor agreement support
+Subject: [PATCH 19/22] BLENDER: contributor agreement support
 
 New models ContributorAgreement and SignedContributorAgreement are
 introduced.
@@ -28,7 +28,7 @@ automatically posts a pull request comment when a check fails:
     https://projects.blender.org/user/settings/contributor_agreements
 ---
  models/user/contributor_agreement.go          |  62 ++++++
- options/locale/locale_en-US.ini               |  21 ++
+ options/locale/locale_en-US.json              |  20 +-
  routers/api/v1/api.go                         |   2 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
@@ -41,7 +41,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 721 insertions(+), 1 deletion(-)
+ 14 files changed, 719 insertions(+), 2 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -118,61 +118,61 @@ index 0000000000..c2c4f550ff
 +	db.RegisterModel(new(ContributorAgreement))
 +	db.RegisterModel(new(SignedContributorAgreement))
 +}
-diff --git a/options/locale/locale_en-US.ini b/options/locale/locale_en-US.ini
-index fe1a1df858..b6f8842cf0 100644
---- a/options/locale/locale_en-US.ini
-+++ b/options/locale/locale_en-US.ini
-@@ -751,6 +751,7 @@ account_link = Linked Accounts
- organization = Organizations
- uid = UID
- webauthn = Two-Factor Authentication (Security Keys)
-+contributor_agreements = Contributor Agreements
- 
- public_profile = Public Profile
- biography_placeholder = Tell us a little bit about yourself! (You can use Markdown)
-@@ -3010,6 +3011,7 @@ last_page = Last
- total = Total: %d
- settings = Admin Settings
- spamreports = Spam Reports
-+signed_contributor_agreements = Signed CLA
- 
- dashboard.new_version_hint = Gitea %s is now available, you are running %s. Check <a target="_blank" rel="noreferrer" href="%s">the blog</a> for more details.
- dashboard.statistic = Summary
-@@ -3182,6 +3184,18 @@ spamreports.created = Report Created
- spamreports.updated = Report Updated
- spamreports.status = Report Status
- 
-+signed_contributor_agreements.all_option = All
-+signed_contributor_agreements.batch_sign = Batch sign contributor agreements
-+signed_contributor_agreements.batch_sign_button = Batch sign
-+signed_contributor_agreements.comment = Comment
-+signed_contributor_agreements.panel = Signed Contributor Agreements
-+signed_contributor_agreements.search_button = Search
-+signed_contributor_agreements.search_user = Search users
-+signed_contributor_agreements.signed_at = Signed At
-+signed_contributor_agreements.slug = CLA
-+signed_contributor_agreements.user = User
-+signed_contributor_agreements.usernames_input = Usernames, one per line
-+
- orgs.org_manage_panel = Organization Management
- orgs.name = Name
- orgs.teams = Teams
-@@ -3949,3 +3963,10 @@ normal_file = Normal file
- executable_file = Executable file
- symbolic_link = Symbolic link
- submodule = Submodule
-+
-+[contributor_agreements]
-+signed_at = Signed by you at %s
-+confirm = I agree to the terms of the contributor agreement.
-+sign = Sign
-+view_and_sign = View text and sign
-+view = View text
+diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
+index d6e362d816..081b227645 100644
+--- a/options/locale/locale_en-US.json
++++ b/options/locale/locale_en-US.json
+@@ -673,6 +673,7 @@
+   "settings.organization": "Organizations",
+   "settings.uid": "UID",
+   "settings.webauthn": "Two-Factor Authentication (Security Keys)",
++  "settings.contributor_agreements": "Contributor Agreements",
+   "settings.public_profile": "Public Profile",
+   "settings.biography_placeholder": "Tell us a little bit about yourself! (You can use Markdown)",
+   "settings.location_placeholder": "Share your approximate location with others",
+@@ -2919,6 +2920,7 @@
+   "admin.total": "Total: %d",
+   "admin.settings": "Admin Settings",
+   "admin.spamreports": "Spam Reports",
++  "admin.signed_contributor_agreements": "Signed CLA",
+   "admin.dashboard.new_version_hint": "Gitea %s is now available, you are running %s. Check <a target=\"_blank\" rel=\"noreferrer\" href=\"%s\">the blog</a> for more details.",
+   "admin.dashboard.statistic": "Summary",
+   "admin.dashboard.maintenance_operations": "Maintenance Operations",
+@@ -3086,6 +3088,17 @@
+   "admin.spamreports.created": "Report Created",
+   "admin.spamreports.updated": "Report Updated",
+   "admin.spamreports.status": "Report Status",
++  "admin.signed_contributor_agreements.all_option": "All",
++  "admin.signed_contributor_agreements.batch_sign": "Batch sign contributor agreements",
++  "admin.signed_contributor_agreements.batch_sign_button": "Batch sign",
++  "admin.signed_contributor_agreements.comment": "Comment",
++  "admin.signed_contributor_agreements.panel": "Signed Contributor Agreements",
++  "admin.signed_contributor_agreements.search_button": "Search",
++  "admin.signed_contributor_agreements.search_user": "Search users",
++  "admin.signed_contributor_agreements.signed_at": "Signed At",
++  "admin.signed_contributor_agreements.slug": "CLA",
++  "admin.signed_contributor_agreements.user": "User",
++  "admin.signed_contributor_agreements.usernames_input": "Usernames, one per line",
+   "admin.orgs.org_manage_panel": "Organization Management",
+   "admin.orgs.name": "Name",
+   "admin.orgs.teams": "Teams",
+@@ -3864,5 +3877,10 @@
+   "actions.general.cross_repo_desc": "Allow the selected repositories to be accessed (read-only) by all the repositories in this owner with GITEA_TOKEN when running Actions jobs.",
+   "actions.general.cross_repo_selected": "Selected repositories",
+   "actions.general.cross_repo_target_repos": "Target Repositories",
+-  "actions.general.cross_repo_add": "Add Target Repository"
++  "actions.general.cross_repo_add": "Add Target Repository",
++  "contributor_agreements.signed_at": "Signed by you at %s",
++  "contributor_agreements.confirm": "I agree to the terms of the contributor agreement.",
++  "contributor_agreements.sign": "Sign",
++  "contributor_agreements.view_and_sign": "View text and sign",
++  "contributor_agreements.view": "View text"
+ }
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index 2e7f057659..28401506f5 100644
+index 35525551cd..070d667cb0 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
-@@ -1025,6 +1025,8 @@ func Routes() *web.Router {
+@@ -1009,6 +1009,8 @@ func Routes() *web.Router {
  				}, reqSelfOrAdmin(), reqBasicOrRevProxyAuth())
  
  				m.Get("/activities/feeds", user.ListUserActivityFeeds)
@@ -183,7 +183,7 @@ index 2e7f057659..28401506f5 100644
  
 diff --git a/routers/api/v1/user/contributor_agreement.go b/routers/api/v1/user/contributor_agreement.go
 new file mode 100644
-index 0000000000..7744c66e18
+index 0000000000..dc6e111e80
 --- /dev/null
 +++ b/routers/api/v1/user/contributor_agreement.go
 @@ -0,0 +1,83 @@
@@ -250,7 +250,7 @@ index 0000000000..7744c66e18
 +		return
 +	}
 +	if !exist {
-+		url := httplib.MakeAbsoluteURL(ctx, setting.AppSubURL + "/user/settings/contributor_agreements")
++		url := httplib.MakeAbsoluteURL(ctx, setting.AppSubURL+"/user/settings/contributor_agreements")
 +		message := []string{
 +			fmt.Sprintf("Contributor agreement <%s> is not signed.", slug),
 +			fmt.Sprintf("Sign at %s", url),
@@ -272,7 +272,7 @@ index 0000000000..7744c66e18
 +}
 diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
 new file mode 100644
-index 0000000000..c994bd787b
+index 0000000000..2cf09e1f59
 --- /dev/null
 +++ b/routers/web/admin/signed_contributor_agreements.go
 @@ -0,0 +1,201 @@
@@ -345,7 +345,7 @@ index 0000000000..c994bd787b
 +		return
 +	}
 +	ctx.Data["SignedContributorAgreements"] = signedContributorAgreements
-+	pager := context.NewPagination(int(count), opts.PageSize, opts.Page, 5)
++	pager := context.NewPagination(count, opts.PageSize, opts.Page, 5)
 +	pager.AddParamFromRequest(ctx.Req)
 +	ctx.Data["Page"] = pager
 +
@@ -479,7 +479,7 @@ index 0000000000..c994bd787b
 +}
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..17f13adf66
+index 0000000000..19ccea7e42
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
 @@ -0,0 +1,158 @@
@@ -538,9 +538,9 @@ index 0000000000..17f13adf66
 +	for i, ca := range contributorAgreements {
 +		var uca UserContributorAgreement
 +		userContributorAgreements[i] = &uca
-+		uca.ContributorAgreement     = *ca
++		uca.ContributorAgreement = *ca
 +		if sca, has := id2sca[ca.ID]; has {
-+			uca.Comment  = sca.Comment
++			uca.Comment = sca.Comment
 +			uca.SignedAt = sca.CreatedUnix
 +		}
 +	}
@@ -635,27 +635,27 @@ index 0000000000..17f13adf66
 +			return fmt.Errorf("UpdateRunJob failed for job.ID=%d: %w", job.ID, err)
 +		}
 +
-+		actions_service.CreateCommitStatus(ctx, job)
-+		notify_service.WorkflowJobStatusUpdate(ctx, job.Run.Repo, job.Run.TriggerUser, job, nil)
++		actions_service.CreateCommitStatusForRunJobs(ctx, run, job)
++		notify_service.WorkflowJobStatusUpdate(ctx, run.Repo, run.TriggerUser, job, nil)
 +	}
 +
 +	return nil
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index e9f804836c..cc63715275 100644
+index e0a8e6a9e4..b8351f7bc1 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -687,6 +687,9 @@ func registerWebRoutes(m *web.Router) {
+@@ -724,6 +724,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  
  		// BLENDER: spam reporting
  		m.Post("/spamreport", user_setting.SpamReportUserPost)
 +		// BLENDER: contributor agreement
 +		m.Get("/contributor_agreements", user_setting.ContributorAgreements)
 +		m.Post("/contributor_agreements/{slug}/sign", user_setting.SignContributorAgreement)
- 	}, reqSignIn, ctxDataSet("PageIsUserSettings", true, "EnablePackages", setting.Packages.Enabled, "EnableNotifyMail", setting.Service.EnableNotifyMail))
+ 	}, reqSignIn, user_setting.SettingsCtxData)
  
  	m.Group("/user", func() {
-@@ -767,6 +770,12 @@ func registerWebRoutes(m *web.Router) {
+@@ -814,6 +817,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  		})
  		m.Post("/purge_spammer", admin.PurgeSpammerPost)
  
@@ -682,19 +682,19 @@ index 39c6ef052d..f82009c919 100644
  		return fmt.Errorf("deleteBeans: %w", err)
  	}
 diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
-index 6cee23f79c..8f1ae3b0e4 100644
+index bede52e75c..dad65b0943 100644
 --- a/templates/admin/navbar.tmpl
 +++ b/templates/admin/navbar.tmpl
 @@ -13,7 +13,7 @@
  				</a>
  			</div>
  		</details>
--		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
-+		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports .PageIsSignedContributorAgreements}}open{{end}}>
+-		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
++		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports .PageIsSignedContributorAgreements}}open{{end}}>
  			<summary>{{ctx.Locale.Tr "admin.identity_access"}}</summary>
  			<div class="menu">
  				<a class="{{if .PageIsAdminAuthentications}}active {{end}}item" href="{{AppSubUrl}}/-/admin/auths">
-@@ -31,6 +31,9 @@
+@@ -34,6 +34,9 @@
  				<a class="{{if .PageIsSpamReports}}active {{end}}item" href="{{AppSubUrl}}/-/admin/spamreports">
  					{{ctx.Locale.Tr "admin.spamreports"}}
  				</a>
@@ -812,10 +812,10 @@ index 0000000000..9c4db6809d
 +
 +{{template "admin/layout_footer" .}}
 diff --git a/templates/swagger/v1_json.tmpl b/templates/swagger/v1_json.tmpl
-index ef0d607e3d..92fe29bcdd 100644
+index 355e4519c9..602655136d 100644
 --- a/templates/swagger/v1_json.tmpl
 +++ b/templates/swagger/v1_json.tmpl
-@@ -20199,6 +20199,42 @@
+@@ -20703,6 +20703,42 @@
          }
        }
      },
@@ -910,10 +910,10 @@ index 0000000000..6276dd5b7b
 +	</div>
 +{{template "user/settings/layout_footer" .}}
 diff --git a/templates/user/settings/navbar.tmpl b/templates/user/settings/navbar.tmpl
-index 34e089a68a..eba9f16888 100644
+index e2bc72ca5f..6742317dbd 100644
 --- a/templates/user/settings/navbar.tmpl
 +++ b/templates/user/settings/navbar.tmpl
-@@ -65,5 +65,8 @@
+@@ -68,5 +68,8 @@
  		<a class="{{if .PageIsSettingsRepos}}active {{end}}item" href="{{AppSubUrl}}/user/settings/repos">
  			{{ctx.Locale.Tr "settings.repos"}}
  		</a>
@@ -923,5 +923,5 @@ index 34e089a68a..eba9f16888 100644
  	</div>
  </div>
 -- 
-2.51.0
+2.47.3
 

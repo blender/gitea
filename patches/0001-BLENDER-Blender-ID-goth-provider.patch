@@ -1,7 +1,7 @@
-From 10205667dc82b937bd956945be551edb4509e3fb Mon Sep 17 00:00:00 2001
+From ab305db7214f442a80ce6df7ed714ae3cae00e0b Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:28:51 +0200
-Subject: [PATCH 01/19] BLENDER: Blender ID goth provider
+Subject: [PATCH 01/22] BLENDER: Blender ID goth provider
 
 Provider authored by Matti Ranta and Arnd Marijnissen.
 ---
@@ -25,11 +25,11 @@ Provider authored by Matti Ranta and Arnd Marijnissen.
  create mode 100644 services/auth/source/oauth2/blenderid/session_test.go
 
 diff --git a/go.mod b/go.mod
-index e4c0a5a989..120fe31c15 100644
+index a2b35f48e0..8e4601f498 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -237,6 +237,7 @@ require (
- 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+@@ -233,6 +233,7 @@ require (
+ 	github.com/minio/minlz v1.1.0 // indirect
  	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
  	github.com/modern-go/reflect2 v1.0.2 // indirect
 +	github.com/mozillazg/go-unidecode v0.2.0 // indirect
@@ -37,10 +37,10 @@ index e4c0a5a989..120fe31c15 100644
  	github.com/mschoch/smat v0.2.0 // indirect
  	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 diff --git a/go.sum b/go.sum
-index d5ea5f6663..ebb4d17d32 100644
+index 5b228a00f4..41ddeffe56 100644
 --- a/go.sum
 +++ b/go.sum
-@@ -599,6 +599,9 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
+@@ -549,6 +549,9 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
  github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
  github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
  github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
@@ -593,5 +593,5 @@ index 65cf538ad7..f6f49ada04 100644
 +		}))
  }
 -- 
-2.51.0
+2.47.3
 

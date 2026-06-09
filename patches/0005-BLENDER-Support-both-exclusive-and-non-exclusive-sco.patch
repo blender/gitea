@@ -1,7 +1,7 @@
-From 10b499c2c2ec0f51d45f8d8ee42f9b9ffc455fc3 Mon Sep 17 00:00:00 2001
+From 21188912848b3c302cd401fe5790b75fb55dcb98 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
-Subject: [PATCH 05/19] BLENDER: Support both exclusive and non-exclusive scope
+Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
  for labels
 
 ---
@@ -46,10 +46,10 @@ index 25d6f1303e..951cfdc1a6 100644
  func NewLabel(ctx context.Context, l *Label) error {
  	color, err := label.NormalizeColor(l.Color)
 diff --git a/modules/templates/util_render.go b/modules/templates/util_render.go
-index 1056c42643..5b4cabf6d8 100644
+index 081a13fb9e..5757e3e805 100644
 --- a/modules/templates/util_render.go
 +++ b/modules/templates/util_render.go
-@@ -142,7 +142,7 @@ func (ut *RenderUtils) renderLabelWithTag(label *issues_model.Label, tagName, ta
+@@ -145,7 +145,7 @@ func (ut *RenderUtils) renderLabelWithTag(label *issues_model.Label, tagName, ta
  	locale := ut.ctx.Value(translation.ContextKey).(translation.Locale)
  	var extraCSSClasses string
  	textColor := util.ContrastColor(label.Color)
@@ -113,10 +113,10 @@ index 04c3605a6a..f0bffcd155 100644
  				{{ctx.RenderUtils.RenderLabel .}}
  				<p class="tw-ml-auto">{{template "repo/issue/labels/label_archived" .}}</p>
 diff --git a/templates/repo/issue/sidebar/label_list.tmpl b/templates/repo/issue/sidebar/label_list.tmpl
-index 15c8760d1a..75a66290b1 100644
+index d30196326b..6339331e0f 100644
 --- a/templates/repo/issue/sidebar/label_list.tmpl
 +++ b/templates/repo/issue/sidebar/label_list.tmpl
-@@ -19,23 +19,25 @@
+@@ -20,23 +20,25 @@
  				<div class="scrolling menu">
  					<a class="item clear-selection" data-text="" href="#">{{ctx.Locale.Tr "repo.issues.new.clear_labels"}}</a>
  					<div class="divider"></div>
@@ -131,7 +131,7 @@ index 15c8760d1a..75a66290b1 100644
  						{{end}}
 -						{{$previousExclusiveScope = $exclusiveScope}}
 +						{{$previousScope = $scope}}
- 						{{template "repo/issue/sidebar/label_list_item" dict "Label" .}}
+ 						{{template "repo/issue/sidebar/label_list_item" dict "Label" . "LabelLink" (print $listBaseLink "?labels=" .ID)}}
  					{{end}}
  					{{if and $data.RepoLabels $data.OrgLabels}}<div class="divider"></div>{{end}}
 -					{{$previousExclusiveScope = "_no_scope"}}
@@ -145,9 +145,9 @@ index 15c8760d1a..75a66290b1 100644
  						{{end}}
 -						{{$previousExclusiveScope = $exclusiveScope}}
 +						{{$previousScope = $scope}}
- 						{{template "repo/issue/sidebar/label_list_item" dict "Label" .}}
+ 						{{template "repo/issue/sidebar/label_list_item" dict "Label" . "LabelLink" (print $listBaseLink "?labels=" .ID)}}
  					{{end}}
  				</div>
 -- 
-2.51.0
+2.47.3
 

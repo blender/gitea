@@ -1,7 +1,7 @@
-From 4c4111718996dec679437b3d5cdab997e7191c7f Mon Sep 17 00:00:00 2001
+From 022b8f8869c398949eef9d708fab72d278fba3f5 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Wed, 4 Dec 2024 15:29:10 +0100
-Subject: [PATCH 12/19] BLENDER: Add Python for external renderering
+Subject: [PATCH 12/22] BLENDER: Add Python for external renderering
 
 To be used for RestructuredText rendering using Sphinx to HTML.
 
@@ -11,12 +11,12 @@ See: https://projects.blender.org/infrastructure/gitea-custom/src/branch/main/sp
  1 file changed, 5 insertions(+)
 
 diff --git a/Dockerfile.rootless b/Dockerfile.rootless
-index e83c1af33b..ebca19ca5b 100644
+index 83c69cbd51..116b7adef8 100644
 --- a/Dockerfile.rootless
 +++ b/Dockerfile.rootless
-@@ -55,6 +55,11 @@ RUN apk --no-cache add \
-     openssh-keygen \
-     && rm -rf /var/cache/apk/*
+@@ -53,6 +53,11 @@ RUN apk --no-cache add \
+     gnupg \
+     openssh-keygen
  
 +# External renderers
 +RUN apk --no-cache add \
@@ -27,5 +27,5 @@ index e83c1af33b..ebca19ca5b 100644
      -S -g 1000 \
      git && \
 -- 
-2.51.0
+2.47.3
 

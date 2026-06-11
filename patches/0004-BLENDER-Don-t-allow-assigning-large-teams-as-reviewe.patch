@@ -1,13 +1,13 @@
-From bc9cfc7e3eebf9217902a6931aa6e0e409384706 Mon Sep 17 00:00:00 2001
+From 1a64ab3dc14b7625ce6b7dbe1d829f0bd450414a Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:33:32 +0200
-Subject: [PATCH 04/19] BLENDER: Don't allow assigning large teams as reviewers
+Subject: [PATCH 04/22] BLENDER: Don't allow assigning large teams as reviewers
 
 To avoid accidentally spamming hundreds of people.
 ---
- models/organization/team.go | 16 ++++++++++++++++
- routers/web/repo/issue.go   |  4 ++--
- services/pull/reviewer.go   |  2 +-
+ models/organization/team.go           | 16 ++++++++++++++++
+ routers/web/shared/mention/mention.go |  4 ++--
+ services/pull/reviewer.go             |  2 +-
  3 files changed, 19 insertions(+), 3 deletions(-)
 
 diff --git a/models/organization/team.go b/models/organization/team.go
@@ -34,31 +34,27 @@ index 7f3a9b3829..f0717faf2e 100644
 +
 +	return smallTeams, nil
 +}
-diff --git a/routers/web/repo/issue.go b/routers/web/repo/issue.go
-index 54b7e5df2a..ec2d9c0131 100644
---- a/routers/web/repo/issue.go
-+++ b/routers/web/repo/issue.go
-@@ -673,13 +673,13 @@ func handleMentionableAssigneesAndTeams(ctx *context.Context, assignees []*user_
- 	}
- 
+diff --git a/routers/web/shared/mention/mention.go b/routers/web/shared/mention/mention.go
+index 5f163cb146..e02da20de6 100644
+--- a/routers/web/shared/mention/mention.go
++++ b/routers/web/shared/mention/mention.go
+@@ -65,9 +65,9 @@ func (c *Collector) AddMentionableTeams(ctx context.Context, doer, owner *user_m
+ 	var teams []*organization.Team
+ 	var err error
  	if isAdmin {
 -		teams, err = org.LoadTeams(ctx)
 +		teams, err = organization.FilterLargeTeams(org.LoadTeams(ctx))
- 		if err != nil {
- 			ctx.ServerError("LoadTeams", err)
- 			return
- 		}
  	} else {
--		teams, err = org.GetUserTeams(ctx, ctx.Doer.ID)
-+		teams, err = organization.FilterLargeTeams(org.GetUserTeams(ctx, ctx.Doer.ID))
- 		if err != nil {
- 			ctx.ServerError("GetUserTeams", err)
- 			return
+-		teams, err = org.GetUserTeams(ctx, doer.ID)
++		teams, err = organization.FilterLargeTeams(org.GetUserTeams(ctx, doer.ID))
+ 	}
+ 	if err != nil {
+ 		return err
 diff --git a/services/pull/reviewer.go b/services/pull/reviewer.go
-index 52f2f3401c..8794a787fc 100644
+index 139aeeb950..d7f8d3dc9b 100644
 --- a/services/pull/reviewer.go
 +++ b/services/pull/reviewer.go
-@@ -85,5 +85,5 @@ func GetReviewerTeams(ctx context.Context, repo *repo_model.Repository) ([]*orga
+@@ -78,5 +78,5 @@ func GetReviewerTeams(ctx context.Context, repo *repo_model.Repository) ([]*orga
  		return nil, nil
  	}
  
@@ -66,5 +62,5 @@ index 52f2f3401c..8794a787fc 100644
 +	return organization.FilterLargeTeams(organization.GetTeamsWithAccessToAnyRepoUnit(ctx, repo.OwnerID, repo.ID, perm.AccessModeRead, unit.TypePullRequests))
  }
 -- 
-2.51.0
+2.47.3
 

@@ -1,7 +1,7 @@
-From c0142cf057a88ca46d446be0028561cb3fbe22f5 Mon Sep 17 00:00:00 2001
+From bd774bc32f227f3d9f534cf4555f3990b86df243 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Thu, 13 Nov 2025 15:44:21 +0100
-Subject: [PATCH 19/19] BLENDER: Add navigation bar icons on mobile
+Subject: [PATCH 18/22] BLENDER: Add navigation bar icons on mobile
 
 ---
  templates/base/head_navbar.tmpl             |  4 ++++
@@ -11,7 +11,7 @@ Subject: [PATCH 19/19] BLENDER: Add navigation bar icons on mobile
  create mode 100644 templates/base/head_navbar_icons_begin.tmpl
 
 diff --git a/templates/base/head_navbar.tmpl b/templates/base/head_navbar.tmpl
-index b721779c95..5a1f5717d7 100644
+index cc7e4e6775..30a2f07916 100644
 --- a/templates/base/head_navbar.tmpl
 +++ b/templates/base/head_navbar.tmpl
 @@ -6,6 +6,10 @@
@@ -45,10 +45,10 @@ index 0000000000..96830cea9f
 +  {{svg "octicon-telescope"}}
 +</a>
 diff --git a/web_src/css/modules/navbar.css b/web_src/css/modules/navbar.css
-index 149766a586..6fcda75236 100644
+index 83d50a9d11..203cbe679f 100644
 --- a/web_src/css/modules/navbar.css
 +++ b/web_src/css/modules/navbar.css
-@@ -61,6 +61,15 @@
+@@ -66,6 +66,15 @@
      display: flex;
      justify-content: space-between;
    }
@@ -63,7 +63,7 @@ index 149766a586..6fcda75236 100644
 +  }
    #navbar .navbar-mobile-right {
      display: flex;
-     margin: 0 0 0 auto;
+     align-items: center;
 -- 
-2.51.0
+2.47.3
 

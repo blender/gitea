@@ -1,7 +1,7 @@
-From cd37387f02b0245f0afc1a0c472372c84f01cb8b Mon Sep 17 00:00:00 2001
+From 36abc474b61c8b720f7553d0414032284bd1bf32 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:49 +0200
-Subject: [PATCH 08/19] BLENDER: Always login with Blender ID, unless
+Subject: [PATCH 08/22] BLENDER: Always login with Blender ID, unless
  noredirect is specified
 
 ---
@@ -9,11 +9,11 @@ Subject: [PATCH 08/19] BLENDER: Always login with Blender ID, unless
  1 file changed, 24 insertions(+)
 
 diff --git a/routers/web/auth/auth.go b/routers/web/auth/auth.go
-index 2ccd1c71b5..2fadfc4b12 100644
+index eeda3704a3..866b782c9f 100644
 --- a/routers/web/auth/auth.go
 +++ b/routers/web/auth/auth.go
-@@ -164,6 +164,26 @@ func CheckAutoLogin(ctx *context.Context) bool {
- 	return false
+@@ -243,6 +243,26 @@ type preparedSignInData struct {
+ 	enableSSPI      bool
  }
  
 +// BLENDER: always use OAuth unless ?noredirect=true is set
@@ -36,11 +36,11 @@ index 2ccd1c71b5..2fadfc4b12 100644
 +	return false
 +}
 +
- func prepareSignInPageData(ctx *context.Context) {
- 	ctx.Data["Title"] = ctx.Tr("sign_in")
- 	ctx.Data["OAuth2Providers"], _ = oauth2.GetOAuth2Providers(ctx, optional.Some(true))
-@@ -185,6 +205,10 @@ func SignIn(ctx *context.Context) {
- 	if CheckAutoLogin(ctx) {
+ func prepareSignInPageData(ctx *context.Context) (ret preparedSignInData) {
+ 	var err error
+ 	ret.enableSSPI = auth.IsSSPIEnabled(ctx)
+@@ -269,6 +289,10 @@ func SignIn(ctx *context.Context) {
+ 	if performAutoLogin(ctx) {
  		return
  	}
 +	// BLENDER: Check if authentication is forced to OAuth
@@ -48,8 +48,8 @@ index 2ccd1c71b5..2fadfc4b12 100644
 +		return
 +	}
  	if ctx.IsSigned {
- 		RedirectAfterLogin(ctx)
+ 		redirectAfterAuth(ctx)
  		return
 -- 
-2.51.0
+2.47.3
 

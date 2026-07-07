@@ -29,7 +29,7 @@ automatically posts a pull request comment when a check fails:
 ---
  models/user/contributor_agreement.go          |  62 ++++++
  options/locale/locale_en-US.json              |  20 +-
- routers/api/v1/api.go                         |   2 +
+ routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
  .../user/setting/contributor_agreements.go    | 158 ++++++++++++++
@@ -41,7 +41,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 719 insertions(+), 2 deletions(-)
+ 14 files changed, 722 insertions(+), 2 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -169,18 +169,21 @@ index d6e362d816..081b227645 100644
 +  "contributor_agreements.view": "View text"
  }
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index 35525551cd..070d667cb0 100644
+index de38ab5bf9..5880f2f872 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
-@@ -1009,6 +1009,8 @@ func Routes() *web.Router {
- 				}, reqSelfOrAdmin(), reqBasicOrRevProxyAuth())
- 
- 				m.Get("/activities/feeds", user.ListUserActivityFeeds)
-+				// BLENDER: contributor agreement
-+				m.Get("/contributor-agreements/{slug}", user.CheckContributorAgreement)
+@@ -1050,6 +1050,11 @@ func Routes() *web.Router {
  			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
  		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
  
++		// BLENDER: contributor agreement
++		m.Group("/users", func() {
++			m.Get("/{username}/contributor-agreements/{slug}", user.CheckContributorAgreement)
++		}, context.UserAssignmentAPI())
++
+ 		// Users (requires user scope)
+ 		m.Group("/users", func() {
+ 			m.Group("/{username}", func() {
 diff --git a/routers/api/v1/user/contributor_agreement.go b/routers/api/v1/user/contributor_agreement.go
 new file mode 100644
 index 0000000000..dc6e111e80

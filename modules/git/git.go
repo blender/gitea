@@ -79,7 +79,7 @@ func loadGitVersionFeatures() (*Features, error) {
 	}
 	features.SupportCheckAttrOnBare = features.CheckVersionAtLeast("2.40")
 	features.SupportCatFileBatchCommand = features.CheckVersionAtLeast("2.36")
-	features.SupportGitMergeTree = features.CheckVersionAtLeast("2.40") // we also need "--merge-base"
+	features.SupportGitMergeTree = false // we also need "--merge-base"
 	return features, nil
 }
 

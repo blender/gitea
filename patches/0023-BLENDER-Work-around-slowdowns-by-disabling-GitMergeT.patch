@@ -1,0 +1,26 @@
+From 5c83b3824a4a3892ca0e96d0f53b49fcb4dfd7f0 Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Thu, 9 Jul 2026 14:51:16 +0200
+Subject: [PATCH] BLENDER: Work around slowdowns by disabling GitMergeTree
+ feature support
+
+---
+ modules/git/git.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/git/git.go b/modules/git/git.go
+index 2df83f9843..e391d3e418 100644
+--- a/modules/git/git.go
++++ b/modules/git/git.go
+@@ -79,7 +79,7 @@ func loadGitVersionFeatures() (*Features, error) {
+ 	}
+ 	features.SupportCheckAttrOnBare = features.CheckVersionAtLeast("2.40")
+ 	features.SupportCatFileBatchCommand = features.CheckVersionAtLeast("2.36")
+-	features.SupportGitMergeTree = features.CheckVersionAtLeast("2.40") // we also need "--merge-base"
++	features.SupportGitMergeTree = false // we also need "--merge-base"
+ 	return features, nil
+ }
+ 
+-- 
+2.54.0
+

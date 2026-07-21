@@ -18,7 +18,7 @@ diff --git a/modules/templates/helper.go b/modules/templates/helper.go
 index 662b89998e..f169c2ed73 100644
 --- a/modules/templates/helper.go
 +++ b/modules/templates/helper.go
-@@ -30,12 +30,14 @@ func newFuncMapWebPage() template.FuncMap {
+@@ -30,12 +30,13 @@ func newFuncMapWebPage() template.FuncMap {
  
  		// -----------------------------------------------------------------
  		// html/template related functions
@@ -28,14 +28,13 @@ index 662b89998e..f169c2ed73 100644
 -		"HTMLFormat":  htmlFormat,
 -		"QueryEscape": queryEscape,
 -		"QueryBuild":  QueryBuild,
-+		"dict":         dict, // it's lowercase because this name has been widely used. Our other functions should have uppercase names.
-+		"Iif":          iif,
-+		"Eval":         evalTokens,
-+		"HTMLFormat":   htmlFormat,
-+		"QueryEscape":  queryEscape,
-+		"QueryBuild":   QueryBuild,
-+		"JSEscape":     jsEscapeSafe,
-+		"SanitizeHTML": SanitizeHTML,
++		"dict":        dict, // it's lowercase because this name has been widely used. Our other functions should have uppercase names.
++		"Iif":         iif,
++		"Eval":        evalTokens,
++		"HTMLFormat":  htmlFormat,
++		"QueryEscape": queryEscape,
++		"QueryBuild":  QueryBuild,
++		"JSEscape":    jsEscapeSafe,
  
  		"PathEscape":         url.PathEscape,
  		"PathEscapeSegments": util.PathEscapeSegments,

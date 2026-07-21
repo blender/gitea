@@ -1,4 +1,4 @@
-From 2ac66a43550a1ae0e3a5fe23a57944f0037c102c Mon Sep 17 00:00:00 2001
+From 5a1f63c2ccd577573bc782d24686b5f24a2aaff2 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
 Subject: [PATCH 14/22] BLENDER: Add Spam Reporting
@@ -35,7 +35,7 @@ a new "pending spam reports" indicator in the header for admins.
 
 diff --git a/models/user/spamreport.go b/models/user/spamreport.go
 new file mode 100644
-index 0000000000..a4390c9d4a
+index 0000000000..84ee0a859f
 --- /dev/null
 +++ b/models/user/spamreport.go
 @@ -0,0 +1,136 @@
@@ -50,8 +50,8 @@ index 0000000000..a4390c9d4a
 +	"context"
 +	"fmt"
 +
-+	"code.gitea.io/gitea/models/db"
-+	"code.gitea.io/gitea/modules/timeutil"
++	"gitea.dev/models/db"
++	"gitea.dev/modules/timeutil"
 +)
 +
 +// SpamReportStatusType is used to support a spam report lifecycle:
@@ -176,10 +176,10 @@ index 0000000000..a4390c9d4a
 +	return nil, err
 +}
 diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
-index 7c20cdc9f2..d2a84d6332 100644
+index 9373aa83a9..18b997309e 100644
 --- a/options/locale/locale_en-US.json
 +++ b/options/locale/locale_en-US.json
-@@ -646,6 +646,15 @@
+@@ -648,6 +648,15 @@
    "user.block.note.edit": "Edit note",
    "user.block.list": "Blocked users",
    "user.block.list.none": "You have not blocked any users.",
@@ -195,7 +195,7 @@ index 7c20cdc9f2..d2a84d6332 100644
    "settings.general": "General",
    "settings.profile": "Profile",
    "settings.account": "Account",
-@@ -2909,6 +2918,7 @@
+@@ -2934,6 +2943,7 @@
    "admin.last_page": "Last",
    "admin.total": "Total: %d",
    "admin.settings": "Admin Settings",
@@ -203,7 +203,7 @@ index 7c20cdc9f2..d2a84d6332 100644
    "admin.dashboard.new_version_hint": "Gitea %s is now available, you are running %s. Check <a target=\"_blank\" rel=\"noreferrer\" href=\"%s\">the blog</a> for more details.",
    "admin.dashboard.statistic": "Summary",
    "admin.dashboard.maintenance_operations": "Maintenance Operations",
-@@ -2995,6 +3005,7 @@
+@@ -3020,6 +3030,7 @@
    "admin.dashboard.sync_tag.started": "Tags Sync started",
    "admin.dashboard.rebuild_issue_indexer": "Rebuild issue indexer",
    "admin.dashboard.sync_repo_licenses": "Sync repo licenses",
@@ -211,7 +211,7 @@ index 7c20cdc9f2..d2a84d6332 100644
    "admin.users.user_manage_panel": "User Account Management",
    "admin.users.new_account": "Create User Account",
    "admin.users.name": "Username",
-@@ -3068,6 +3079,13 @@
+@@ -3093,6 +3104,13 @@
    "admin.emails.delete_desc": "Are you sure you want to delete this email address?",
    "admin.emails.deletion_success": "The email address has been deleted.",
    "admin.emails.delete_primary_email_error": "You cannot delete the primary email address.",
@@ -226,16 +226,16 @@ index 7c20cdc9f2..d2a84d6332 100644
    "admin.orgs.name": "Name",
    "admin.orgs.teams": "Teams",
 diff --git a/routers/common/pagetmpl.go b/routers/common/pagetmpl.go
-index c48596d48b..ef18ac74e7 100644
+index 09c7a04bde..2f690b8bed 100644
 --- a/routers/common/pagetmpl.go
 +++ b/routers/common/pagetmpl.go
 @@ -11,6 +11,7 @@ import (
- 	activities_model "code.gitea.io/gitea/models/activities"
- 	"code.gitea.io/gitea/models/db"
- 	issues_model "code.gitea.io/gitea/models/issues"
-+	user_model "code.gitea.io/gitea/models/user"
- 	"code.gitea.io/gitea/modules/log"
- 	"code.gitea.io/gitea/services/context"
+ 	activities_model "gitea.dev/models/activities"
+ 	"gitea.dev/models/db"
+ 	issues_model "gitea.dev/models/issues"
++	user_model "gitea.dev/models/user"
+ 	"gitea.dev/modules/log"
+ 	"gitea.dev/services/context"
  )
 @@ -65,12 +66,27 @@ func notificationUnreadCount(ctx *context.Context) int64 {
  	return count
@@ -276,7 +276,7 @@ index c48596d48b..ef18ac74e7 100644
  }
 diff --git a/routers/web/admin/spamreports.go b/routers/web/admin/spamreports.go
 new file mode 100644
-index 0000000000..2b6fac373b
+index 0000000000..7c1bb7206c
 --- /dev/null
 +++ b/routers/web/admin/spamreports.go
 @@ -0,0 +1,135 @@
@@ -291,12 +291,12 @@ index 0000000000..2b6fac373b
 +	"net/http"
 +	"strconv"
 +
-+	"code.gitea.io/gitea/models/db"
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/setting"
-+	"code.gitea.io/gitea/modules/templates"
-+	"code.gitea.io/gitea/services/context"
-+	user_service "code.gitea.io/gitea/services/user"
++	"gitea.dev/models/db"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/setting"
++	"gitea.dev/modules/templates"
++	"gitea.dev/services/context"
++	user_service "gitea.dev/services/user"
 +)
 +
 +const (
@@ -416,20 +416,20 @@ index 0000000000..2b6fac373b
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/shared/user/header.go b/routers/web/shared/user/header.go
-index 2ba45fc5a7..7281c45388 100644
+index e4fd464375..d64d881908 100644
 --- a/routers/web/shared/user/header.go
 +++ b/routers/web/shared/user/header.go
-@@ -22,6 +22,7 @@ import (
- 	"code.gitea.io/gitea/modules/setting"
- 	"code.gitea.io/gitea/modules/util"
- 	"code.gitea.io/gitea/services/context"
-+	user_service "code.gitea.io/gitea/services/user"
+@@ -23,6 +23,7 @@ import (
+ 	"gitea.dev/modules/setting"
+ 	"gitea.dev/modules/util"
+ 	"gitea.dev/services/context"
++	user_service "gitea.dev/services/user"
  )
  
  // prepareContextForProfileBigAvatar set the context for big avatar view on the profile page
 @@ -88,6 +89,25 @@ func prepareContextForProfileBigAvatar(ctx *context.Context) {
- 		} else {
- 			ctx.Data["UserBlocking"] = block
+ 		if err != nil && !errors.Is(err, util.ErrNotExist) {
+ 			ctx.ServerError("GetBlocking", err)
  		}
 +
 +		// BLENDER: spam reporting
@@ -455,7 +455,7 @@ index 2ba45fc5a7..7281c45388 100644
  
 diff --git a/routers/web/user/setting/spamreport.go b/routers/web/user/setting/spamreport.go
 new file mode 100644
-index 0000000000..254b54c56f
+index 0000000000..99bc483f88
 --- /dev/null
 +++ b/routers/web/user/setting/spamreport.go
 @@ -0,0 +1,43 @@
@@ -469,10 +469,10 @@ index 0000000000..254b54c56f
 +import (
 +	"net/http"
 +
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/setting"
-+	"code.gitea.io/gitea/services/context"
-+	user_service "code.gitea.io/gitea/services/user"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/setting"
++	"gitea.dev/services/context"
++	user_service "gitea.dev/services/user"
 +)
 +
 +// SpamReportUserPost creates a spam report for a given user.
@@ -503,10 +503,10 @@ index 0000000000..254b54c56f
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index 085558c9b2..e0a8e6a9e4 100644
+index 0bfae44e86..f9d4763016 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -721,6 +721,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -733,6 +733,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  			m.Get("", user_setting.BlockedUsers)
  			m.Post("", web.Bind(forms.BlockUserForm{}), user_setting.BlockedUsersPost)
  		})
@@ -516,7 +516,7 @@ index 085558c9b2..e0a8e6a9e4 100644
  	}, reqSignIn, user_setting.SettingsCtxData)
  
  	m.Group("/user", func() {
-@@ -804,6 +807,13 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -816,6 +819,13 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  			m.Post("/delete", admin.DeleteEmail)
  		})
  
@@ -532,7 +532,7 @@ index 085558c9b2..e0a8e6a9e4 100644
  		})
 diff --git a/services/user/spamreport.go b/services/user/spamreport.go
 new file mode 100644
-index 0000000000..4aabac4054
+index 0000000000..e2e9ab1388
 --- /dev/null
 +++ b/services/user/spamreport.go
 @@ -0,0 +1,229 @@
@@ -548,16 +548,16 @@ index 0000000000..4aabac4054
 +	"fmt"
 +	"strconv"
 +
-+	"code.gitea.io/gitea/models/db"
-+	issues_model "code.gitea.io/gitea/models/issues"
-+	"code.gitea.io/gitea/models/organization"
-+	project_model "code.gitea.io/gitea/models/project"
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/log"
-+	"code.gitea.io/gitea/modules/optional"
-+	"code.gitea.io/gitea/modules/structs"
-+	issue_service "code.gitea.io/gitea/services/issue"
-+	repo_service "code.gitea.io/gitea/services/repository"
++	"gitea.dev/models/db"
++	issues_model "gitea.dev/models/issues"
++	"gitea.dev/models/organization"
++	project_model "gitea.dev/models/project"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/log"
++	"gitea.dev/modules/optional"
++	"gitea.dev/modules/structs"
++	issue_service "gitea.dev/services/issue"
++	repo_service "gitea.dev/services/repository"
 +)
 +
 +// IsTrustedUser tells if a user is trusted to report spam and to be excluded from others' spam reports.
@@ -767,7 +767,7 @@ index 0000000000..4aabac4054
 +}
 diff --git a/services/user/spamreport_test.go b/services/user/spamreport_test.go
 new file mode 100644
-index 0000000000..c24b12e817
+index 0000000000..226498266f
 --- /dev/null
 +++ b/services/user/spamreport_test.go
 @@ -0,0 +1,93 @@
@@ -782,9 +782,9 @@ index 0000000000..c24b12e817
 +	"context"
 +	"testing"
 +
-+	"code.gitea.io/gitea/models/db"
-+	"code.gitea.io/gitea/models/unittest"
-+	user_model "code.gitea.io/gitea/models/user"
++	"gitea.dev/models/db"
++	"gitea.dev/models/unittest"
++	user_model "gitea.dev/models/user"
 +
 +	"github.com/stretchr/testify/assert"
 +)
@@ -865,15 +865,15 @@ index 0000000000..c24b12e817
 +	assert.NoError(t, err)
 +}
 diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
-index ce3048ed9f..bede52e75c 100644
+index a54fa530e2..9268134887 100644
 --- a/templates/admin/navbar.tmpl
 +++ b/templates/admin/navbar.tmpl
 @@ -13,7 +13,7 @@
  				</a>
  			</div>
  		</details>
--		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications}}open{{end}}>
-+		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
+-		<details class="item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications}}open{{end}}>
++		<details class="item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
  			<summary>{{ctx.Locale.Tr "admin.identity_access"}}</summary>
  			<div class="menu">
  				<a class="{{if .PageIsAdminAuthentications}}active {{end}}item" href="{{AppSubUrl}}/-/admin/auths">
@@ -886,7 +886,7 @@ index ce3048ed9f..bede52e75c 100644
 +				</a>
  			</div>
  		</details>
- 		<details class="item toggleable-item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
+ 		<details class="item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
 diff --git a/templates/admin/spamreports/list.tmpl b/templates/admin/spamreports/list.tmpl
 new file mode 100644
 index 0000000000..dc8240ba3f
@@ -1010,10 +1010,10 @@ index 019e78cb60..66c9be0314 100644
  		<div class="tw-relative flex-text-block">
  			{{svg "octicon-bell"}}
 diff --git a/templates/shared/user/profile_big_avatar.tmpl b/templates/shared/user/profile_big_avatar.tmpl
-index 41bcdaccb0..21b02f7bcf 100644
+index 1b44b6c444..5f5ecdff77 100644
 --- a/templates/shared/user/profile_big_avatar.tmpl
 +++ b/templates/shared/user/profile_big_avatar.tmpl
-@@ -134,9 +134,26 @@
+@@ -137,9 +137,26 @@
  						<a class="muted" href="{{AppSubUrl}}/user/settings/blocked_users">{{ctx.Locale.Tr "user.block.unblock"}}</a>
  					{{end}}
  				</li>
@@ -1081,5 +1081,5 @@ index 0000000000..e9015fd16c
 +	</div>
 +</div>
 -- 
-2.47.3
+2.53.0
 

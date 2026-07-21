@@ -1,4 +1,4 @@
-From 9418dc132ac47e1e915c87348f48f8c11359162a Mon Sep 17 00:00:00 2001
+From bb2f08ef0884718da357a1a3b761cefc23f18099 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
 Subject: [PATCH 19/22] BLENDER: contributor agreement support
@@ -18,7 +18,6 @@ https://projects.blender.org/infrastructure/clacheck-runner
 SignContributorAgreement function searches for failed cla.yml workflows
 that were triggered by the current user and reruns them (search limited to
 10 latest workflow runs).
-Also "clacheck" statuses created by the clacheck webhook are updated.
 This updates the failed check status automatically and doesn't require any
 additional actions from the user.
 
@@ -28,21 +27,21 @@ automatically posts a pull request comment when a check fails:
     @username please sign the contributor agreement $CLA_SLUG at
     https://projects.blender.org/user/settings/contributor_agreements
 ---
- models/user/contributor_agreement.go          |  62 +++++
+ models/user/contributor_agreement.go          |  62 ++++++
  options/locale/locale_en-US.json              |  20 +-
  routers/api/v1/api.go                         |   2 +
- routers/api/v1/user/contributor_agreement.go  |  83 +++++++
- .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++
- .../user/setting/contributor_agreements.go    | 223 ++++++++++++++++++
+ routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
+ .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
+ .../user/setting/contributor_agreements.go    | 158 ++++++++++++++
  routers/web/web.go                            |   9 +
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
  .../batch_sign.tmpl                           |  35 +++
- .../signed_contributor_agreements/list.tmpl   |  60 +++++
- templates/swagger/v1_json.tmpl                |  36 +++
+ .../signed_contributor_agreements/list.tmpl   |  60 ++++++
+ templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 784 insertions(+), 2 deletions(-)
+ 14 files changed, 719 insertions(+), 2 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -53,7 +52,7 @@ automatically posts a pull request comment when a check fails:
 
 diff --git a/models/user/contributor_agreement.go b/models/user/contributor_agreement.go
 new file mode 100644
-index 0000000000..c2c4f550ff
+index 0000000000..0dd3373fbc
 --- /dev/null
 +++ b/models/user/contributor_agreement.go
 @@ -0,0 +1,62 @@
@@ -65,8 +64,8 @@ index 0000000000..c2c4f550ff
 +package user
 +
 +import (
-+	"code.gitea.io/gitea/models/db"
-+	"code.gitea.io/gitea/modules/timeutil"
++	"gitea.dev/models/db"
++	"gitea.dev/modules/timeutil"
 +
 +	"xorm.io/builder"
 +)
@@ -120,10 +119,10 @@ index 0000000000..c2c4f550ff
 +	db.RegisterModel(new(SignedContributorAgreement))
 +}
 diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
-index d6e362d816..081b227645 100644
+index 0907aeac35..2ddbfd3c46 100644
 --- a/options/locale/locale_en-US.json
 +++ b/options/locale/locale_en-US.json
-@@ -673,6 +673,7 @@
+@@ -675,6 +675,7 @@
    "settings.organization": "Organizations",
    "settings.uid": "UID",
    "settings.webauthn": "Two-Factor Authentication (Security Keys)",
@@ -131,7 +130,7 @@ index d6e362d816..081b227645 100644
    "settings.public_profile": "Public Profile",
    "settings.biography_placeholder": "Tell us a little bit about yourself! (You can use Markdown)",
    "settings.location_placeholder": "Share your approximate location with others",
-@@ -2919,6 +2920,7 @@
+@@ -2944,6 +2945,7 @@
    "admin.total": "Total: %d",
    "admin.settings": "Admin Settings",
    "admin.spamreports": "Spam Reports",
@@ -139,7 +138,7 @@ index d6e362d816..081b227645 100644
    "admin.dashboard.new_version_hint": "Gitea %s is now available, you are running %s. Check <a target=\"_blank\" rel=\"noreferrer\" href=\"%s\">the blog</a> for more details.",
    "admin.dashboard.statistic": "Summary",
    "admin.dashboard.maintenance_operations": "Maintenance Operations",
-@@ -3086,6 +3088,17 @@
+@@ -3111,6 +3113,17 @@
    "admin.spamreports.created": "Report Created",
    "admin.spamreports.updated": "Report Updated",
    "admin.spamreports.status": "Report Status",
@@ -157,7 +156,7 @@ index d6e362d816..081b227645 100644
    "admin.orgs.org_manage_panel": "Organization Management",
    "admin.orgs.name": "Name",
    "admin.orgs.teams": "Teams",
-@@ -3864,5 +3877,10 @@
+@@ -3943,5 +3956,10 @@
    "actions.general.cross_repo_desc": "Allow the selected repositories to be accessed (read-only) by all the repositories in this owner with GITEA_TOKEN when running Actions jobs.",
    "actions.general.cross_repo_selected": "Selected repositories",
    "actions.general.cross_repo_target_repos": "Target Repositories",
@@ -170,10 +169,10 @@ index d6e362d816..081b227645 100644
 +  "contributor_agreements.view": "View text"
  }
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index de38ab5bf9..faa52accce 100644
+index fa8d29c28b..1b720199c3 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
-@@ -1047,6 +1047,8 @@ func Routes() *web.Router {
+@@ -1084,6 +1084,8 @@ func Routes() *web.Router {
  				}, reqSelfOrAdmin(), reqBasicOrRevProxyAuth())
  
  				m.Get("/activities/feeds", user.ListUserActivityFeeds)
@@ -184,7 +183,7 @@ index de38ab5bf9..faa52accce 100644
  
 diff --git a/routers/api/v1/user/contributor_agreement.go b/routers/api/v1/user/contributor_agreement.go
 new file mode 100644
-index 0000000000..dc6e111e80
+index 0000000000..5a75897016
 --- /dev/null
 +++ b/routers/api/v1/user/contributor_agreement.go
 @@ -0,0 +1,83 @@
@@ -200,11 +199,11 @@ index 0000000000..dc6e111e80
 +	"net/http"
 +	"strings"
 +
-+	"code.gitea.io/gitea/models/db"
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/httplib"
-+	"code.gitea.io/gitea/modules/setting"
-+	"code.gitea.io/gitea/services/context"
++	"gitea.dev/models/db"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/httplib"
++	"gitea.dev/modules/setting"
++	"gitea.dev/services/context"
 +
 +	"xorm.io/builder"
 +)
@@ -273,7 +272,7 @@ index 0000000000..dc6e111e80
 +}
 diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
 new file mode 100644
-index 0000000000..2cf09e1f59
+index 0000000000..3f9e760101
 --- /dev/null
 +++ b/routers/web/admin/signed_contributor_agreements.go
 @@ -0,0 +1,201 @@
@@ -289,12 +288,12 @@ index 0000000000..2cf09e1f59
 +	"net/http"
 +	"strings"
 +
-+	"code.gitea.io/gitea/models/db"
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/log"
-+	"code.gitea.io/gitea/modules/setting"
-+	"code.gitea.io/gitea/modules/templates"
-+	"code.gitea.io/gitea/services/context"
++	"gitea.dev/models/db"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/log"
++	"gitea.dev/modules/setting"
++	"gitea.dev/modules/templates"
++	"gitea.dev/services/context"
 +)
 +
 +const (
@@ -480,10 +479,10 @@ index 0000000000..2cf09e1f59
 +}
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..566e5b572e
+index 0000000000..3544e07bea
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
-@@ -0,0 +1,223 @@
+@@ -0,0 +1,158 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -495,25 +494,17 @@ index 0000000000..566e5b572e
 +	"context"
 +	"fmt"
 +	"net/http"
-+	"strconv"
 +
-+	actions_model "code.gitea.io/gitea/models/actions"
-+	"code.gitea.io/gitea/models/db"
-+	git_model "code.gitea.io/gitea/models/git"
-+	issues_model "code.gitea.io/gitea/models/issues"
-+	repo_model "code.gitea.io/gitea/models/repo"
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/commitstatus"
-+	"code.gitea.io/gitea/modules/log"
-+	"code.gitea.io/gitea/modules/optional"
-+	"code.gitea.io/gitea/modules/setting"
-+	"code.gitea.io/gitea/modules/templates"
-+	"code.gitea.io/gitea/modules/timeutil"
-+	actions_service "code.gitea.io/gitea/services/actions"
-+	gitea_context "code.gitea.io/gitea/services/context"
-+	notify_service "code.gitea.io/gitea/services/notify"
-+	pull_service "code.gitea.io/gitea/services/pull"
-+	commitstatus_service "code.gitea.io/gitea/services/repository/commitstatus"
++	actions_model "gitea.dev/models/actions"
++	"gitea.dev/models/db"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/log"
++	"gitea.dev/modules/setting"
++	"gitea.dev/modules/templates"
++	"gitea.dev/modules/timeutil"
++	actions_service "gitea.dev/services/actions"
++	gitea_context "gitea.dev/services/context"
++	notify_service "gitea.dev/services/notify"
 +
 +	"xorm.io/builder"
 +)
@@ -594,12 +585,6 @@ index 0000000000..566e5b572e
 +	}); err != nil {
 +		log.Error("rerunFailedActions for userID=%d failed: %v", doer.ID, err)
 +	}
-+	// Update failed statuses created by the clacheck webhook.
-+	if err := db.WithTx(ctx, func(ctx context.Context) error {
-+		return updateClacheckCommitStatus(ctx, doer)
-+	}); err != nil {
-+		log.Error("updateClacheckCommitStatus for userID=%d failed: %v", doer.ID, err)
-+	}
 +	ctx.Redirect(setting.AppSubURL + "/user/settings/contributor_agreements")
 +}
 +
@@ -656,62 +641,11 @@ index 0000000000..566e5b572e
 +
 +	return nil
 +}
-+
-+// updateClacheckCommitStatus goes through user's recent PRs and looks for failed clacheck statuses to update them.
-+func updateClacheckCommitStatus(ctx context.Context, user *user_model.User) error {
-+	pullsAsIssues, err := issues_model.Issues(ctx, &issues_model.IssuesOptions{
-+		IsPull: optional.Some(true),
-+		Paginator: &db.ListOptions{
-+			PageSize: 20,
-+		},
-+		PosterID: strconv.FormatInt(user.ID, 10),
-+		SortType: "recentupdate",
-+	})
-+	if err != nil {
-+		return fmt.Errorf("failed to fetch issues: %w", err)
-+	}
-+	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, pullsAsIssues)
-+	if err != nil {
-+		return fmt.Errorf("failed to GetIssuesAllCommitStatus: %w", err)
-+	}
-+	clacheckStatusContext := "clacheck"
-+	for _, statuses := range issueID2statuses {
-+		hasClacheckFailure, hasClacheckSuccess := false, false
-+		var sha string
-+		var repoID int64
-+		for _, status := range statuses {
-+			if status.Context != clacheckStatusContext {
-+				continue
-+			}
-+			if status.State == commitstatus.CommitStatusFailure {
-+				hasClacheckFailure = true
-+				sha = status.SHA
-+				repoID = status.RepoID
-+			}
-+			if status.State == commitstatus.CommitStatusSuccess {
-+				hasClacheckSuccess = true
-+			}
-+		}
-+		if hasClacheckFailure && !hasClacheckSuccess {
-+			repo, err := repo_model.GetRepositoryByID(ctx, repoID)
-+			if err != nil {
-+				return fmt.Errorf("getRepositoryByID [%d]: %w", repoID, err)
-+			}
-+			statusSuccess := git_model.CommitStatus{
-+				Context:     clacheckStatusContext,
-+				Description: "Contributor agreement is signed",
-+				State:       commitstatus.CommitStatusSuccess,
-+			}
-+			commitstatus_service.CreateCommitStatus(ctx, repo, user, sha, &statusSuccess)
-+		}
-+	}
-+	return nil
-+}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index e0a8e6a9e4..b8351f7bc1 100644
+index f9d4763016..8239eeafc8 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -724,6 +724,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -736,6 +736,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  
  		// BLENDER: spam reporting
  		m.Post("/spamreport", user_setting.SpamReportUserPost)
@@ -721,7 +655,7 @@ index e0a8e6a9e4..b8351f7bc1 100644
  	}, reqSignIn, user_setting.SettingsCtxData)
  
  	m.Group("/user", func() {
-@@ -814,6 +817,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -826,6 +829,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  		})
  		m.Post("/purge_spammer", admin.PurgeSpammerPost)
  
@@ -735,28 +669,28 @@ index e0a8e6a9e4..b8351f7bc1 100644
  			m.Get("", admin.Organizations)
  		})
 diff --git a/services/user/delete.go b/services/user/delete.go
-index 39c6ef052d..f82009c919 100644
+index 5592ac7c4b..08d5e16f9d 100644
 --- a/services/user/delete.go
 +++ b/services/user/delete.go
-@@ -95,6 +95,8 @@ func deleteUser(ctx context.Context, u *user_model.User, purge bool) (err error)
- 		&user_model.Blocking{BlockerID: u.ID},
+@@ -96,6 +96,8 @@ func deleteUser(ctx context.Context, u *user_model.User, purge bool) (err error)
  		&user_model.Blocking{BlockeeID: u.ID},
  		&actions_model.ActionRunnerToken{OwnerID: u.ID},
+ 		&actions_model.ActionScopedWorkflowSource{OwnerID: u.ID},
 +		// BLENDER: contributor agreement
 +		&user_model.SignedContributorAgreement{UserID: u.ID},
  	); err != nil {
  		return fmt.Errorf("deleteBeans: %w", err)
  	}
 diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
-index bede52e75c..dad65b0943 100644
+index 9268134887..775e29966b 100644
 --- a/templates/admin/navbar.tmpl
 +++ b/templates/admin/navbar.tmpl
 @@ -13,7 +13,7 @@
  				</a>
  			</div>
  		</details>
--		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
-+		<details class="item toggleable-item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports .PageIsSignedContributorAgreements}}open{{end}}>
+-		<details class="item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports}}open{{end}}>
++		<details class="item" {{if or .PageIsAdminUsers .PageIsAdminBadges .PageIsAdminEmails .PageIsAdminOrganizations .PageIsAdminAuthentications .PageIsSpamReports .PageIsSignedContributorAgreements}}open{{end}}>
  			<summary>{{ctx.Locale.Tr "admin.identity_access"}}</summary>
  			<div class="menu">
  				<a class="{{if .PageIsAdminAuthentications}}active {{end}}item" href="{{AppSubUrl}}/-/admin/auths">
@@ -769,7 +703,7 @@ index bede52e75c..dad65b0943 100644
 +				</a>
  			</div>
  		</details>
- 		<details class="item toggleable-item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
+ 		<details class="item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
 diff --git a/templates/admin/signed_contributor_agreements/batch_sign.tmpl b/templates/admin/signed_contributor_agreements/batch_sign.tmpl
 new file mode 100644
 index 0000000000..9fe5dabc8f
@@ -878,10 +812,10 @@ index 0000000000..9c4db6809d
 +
 +{{template "admin/layout_footer" .}}
 diff --git a/templates/swagger/v1_json.tmpl b/templates/swagger/v1_json.tmpl
-index 355e4519c9..602655136d 100644
+index 41e4209648..c7d864e0bf 100644
 --- a/templates/swagger/v1_json.tmpl
 +++ b/templates/swagger/v1_json.tmpl
-@@ -20703,6 +20703,42 @@
+@@ -21397,6 +21397,42 @@
          }
        }
      },
@@ -976,10 +910,10 @@ index 0000000000..6276dd5b7b
 +	</div>
 +{{template "user/settings/layout_footer" .}}
 diff --git a/templates/user/settings/navbar.tmpl b/templates/user/settings/navbar.tmpl
-index e2bc72ca5f..6742317dbd 100644
+index c278105243..e15b8712e5 100644
 --- a/templates/user/settings/navbar.tmpl
 +++ b/templates/user/settings/navbar.tmpl
-@@ -68,5 +68,8 @@
+@@ -71,5 +71,8 @@
  		<a class="{{if .PageIsSettingsRepos}}active {{end}}item" href="{{AppSubUrl}}/user/settings/repos">
  			{{ctx.Locale.Tr "settings.repos"}}
  		</a>

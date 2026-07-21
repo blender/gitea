@@ -1,4 +1,4 @@
-From 36abc474b61c8b720f7553d0414032284bd1bf32 Mon Sep 17 00:00:00 2001
+From 5e8f4ce200523ea680f748f317c7aeb7dd9338cb Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:49 +0200
 Subject: [PATCH 08/22] BLENDER: Always login with Blender ID, unless
@@ -9,7 +9,7 @@ Subject: [PATCH 08/22] BLENDER: Always login with Blender ID, unless
  1 file changed, 24 insertions(+)
 
 diff --git a/routers/web/auth/auth.go b/routers/web/auth/auth.go
-index eeda3704a3..866b782c9f 100644
+index 4c8a379ad0..48d67a5c90 100644
 --- a/routers/web/auth/auth.go
 +++ b/routers/web/auth/auth.go
 @@ -243,6 +243,26 @@ type preparedSignInData struct {
@@ -51,5 +51,5 @@ index eeda3704a3..866b782c9f 100644
  		redirectAfterAuth(ctx)
  		return
 -- 
-2.47.3
+2.53.0
 

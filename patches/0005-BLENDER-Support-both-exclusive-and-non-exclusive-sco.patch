@@ -1,4 +1,4 @@
-From 21188912848b3c302cd401fe5790b75fb55dcb98 Mon Sep 17 00:00:00 2001
+From 6ba25ad6f6c9fb8b273ad792a5b0963f10967dd0 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
 Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
@@ -13,10 +13,10 @@ Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
  5 files changed, 29 insertions(+), 22 deletions(-)
 
 diff --git a/models/issues/label.go b/models/issues/label.go
-index 25d6f1303e..951cfdc1a6 100644
+index 5b9898b3b2..16cf17e71f 100644
 --- a/models/issues/label.go
 +++ b/models/issues/label.go
-@@ -184,11 +184,8 @@ func (l *Label) BelongsToRepo() bool {
+@@ -179,11 +179,8 @@ func (l *Label) BelongsToRepo() bool {
  	return l.RepoID > 0
  }
  
@@ -30,7 +30,7 @@ index 25d6f1303e..951cfdc1a6 100644
  	lastIndex := strings.LastIndex(l.Name, "/")
  	if lastIndex == -1 || lastIndex == 0 || lastIndex == len(l.Name)-1 {
  		return ""
-@@ -196,6 +193,14 @@ func (l *Label) ExclusiveScope() string {
+@@ -191,6 +188,14 @@ func (l *Label) ExclusiveScope() string {
  	return l.Name[:lastIndex]
  }
  
@@ -46,10 +46,10 @@ index 25d6f1303e..951cfdc1a6 100644
  func NewLabel(ctx context.Context, l *Label) error {
  	color, err := label.NormalizeColor(l.Color)
 diff --git a/modules/templates/util_render.go b/modules/templates/util_render.go
-index 081a13fb9e..5757e3e805 100644
+index 46f90be78a..3a6a84c583 100644
 --- a/modules/templates/util_render.go
 +++ b/modules/templates/util_render.go
-@@ -145,7 +145,7 @@ func (ut *RenderUtils) renderLabelWithTag(label *issues_model.Label, tagName, ta
+@@ -101,7 +101,7 @@ func (ut *RenderUtils) RenderLabel(label *issues_model.Label) template.HTML {
  	locale := ut.ctx.Value(translation.ContextKey).(translation.Locale)
  	var extraCSSClasses string
  	textColor := util.ContrastColor(label.Color)
@@ -59,7 +59,7 @@ index 081a13fb9e..5757e3e805 100644
  
  	if label.IsArchived() {
 diff --git a/templates/repo/issue/filter_actions.tmpl b/templates/repo/issue/filter_actions.tmpl
-index 8e2410393d..0d196d1f87 100644
+index 4c9366a645..b132c52b83 100644
 --- a/templates/repo/issue/filter_actions.tmpl
 +++ b/templates/repo/issue/filter_actions.tmpl
 @@ -22,15 +22,15 @@
@@ -77,7 +77,7 @@ index 8e2410393d..0d196d1f87 100644
  					{{end}}
 -					{{$previousExclusiveScope = $exclusiveScope}}
 +					{{$previousScope = $scope}}
- 					<div class="item issue-action tw-flex tw-justify-between" data-action="toggle" data-element-id="{{.ID}}" data-url="{{$.RepoLink}}/issues/labels">
+ 					<div class="item issue-action flex-left-right" data-action="toggle" data-element-id="{{.ID}}" data-url="{{$.RepoLink}}/issues/labels">
 -						{{if SliceUtils.Contains $.SelLabelIDs .ID}}{{svg (Iif $exclusiveScope "octicon-dot-fill" "octicon-check")}}{{end}} {{ctx.RenderUtils.RenderLabel .}}
 +						{{if SliceUtils.Contains $.SelLabelIDs .ID}}{{svg (Iif .ExclusiveScope "octicon-dot-fill" "octicon-check")}}{{end}} {{ctx.RenderUtils.RenderLabel .}}
  						{{template "repo/issue/labels/label_archived" .}}
@@ -113,7 +113,7 @@ index 04c3605a6a..f0bffcd155 100644
  				{{ctx.RenderUtils.RenderLabel .}}
  				<p class="tw-ml-auto">{{template "repo/issue/labels/label_archived" .}}</p>
 diff --git a/templates/repo/issue/sidebar/label_list.tmpl b/templates/repo/issue/sidebar/label_list.tmpl
-index d30196326b..6339331e0f 100644
+index 3eb7ba8d7a..86c847f977 100644
 --- a/templates/repo/issue/sidebar/label_list.tmpl
 +++ b/templates/repo/issue/sidebar/label_list.tmpl
 @@ -20,23 +20,25 @@
@@ -149,5 +149,5 @@ index d30196326b..6339331e0f 100644
  					{{end}}
  				</div>
 -- 
-2.47.3
+2.53.0
 

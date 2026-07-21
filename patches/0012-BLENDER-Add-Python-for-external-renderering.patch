@@ -1,4 +1,4 @@
-From 022b8f8869c398949eef9d708fab72d278fba3f5 Mon Sep 17 00:00:00 2001
+From e3a05118181b8d1fecae84d1b6d261c6680ab017 Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Wed, 4 Dec 2024 15:29:10 +0100
 Subject: [PATCH 12/22] BLENDER: Add Python for external renderering
@@ -11,7 +11,7 @@ See: https://projects.blender.org/infrastructure/gitea-custom/src/branch/main/sp
  1 file changed, 5 insertions(+)
 
 diff --git a/Dockerfile.rootless b/Dockerfile.rootless
-index 83c69cbd51..116b7adef8 100644
+index 4be5a4f8b3..eda41c865b 100644
 --- a/Dockerfile.rootless
 +++ b/Dockerfile.rootless
 @@ -53,6 +53,11 @@ RUN apk --no-cache add \
@@ -27,5 +27,5 @@ index 83c69cbd51..116b7adef8 100644
      -S -g 1000 \
      git && \
 -- 
-2.47.3
+2.53.0
 

@@ -1,4 +1,4 @@
-From 4426396a65a447dbd757967d5e23ceb048dad75b Mon Sep 17 00:00:00 2001
+From 1f74f9373fbfe7825f4d1b150c8ff5d09c8334bd Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:05:47 +0200
 Subject: [PATCH 09/22] BLENDER: Allow non-local users to be renamed
@@ -9,7 +9,7 @@ For Blender ID hook to do this.
  1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/services/user/user.go b/services/user/user.go
-index 9b8bcf83c0..a877ef0354 100644
+index 91551fe2be..0281c130db 100644
 --- a/services/user/user.go
 +++ b/services/user/user.go
 @@ -36,11 +36,12 @@ func RenameUser(ctx context.Context, u *user_model.User, newUserName string, doe
@@ -31,5 +31,5 @@ index 9b8bcf83c0..a877ef0354 100644
  	if err := user_model.IsUsableUsername(newUserName); err != nil {
  		return err
 -- 
-2.47.3
+2.53.0
 

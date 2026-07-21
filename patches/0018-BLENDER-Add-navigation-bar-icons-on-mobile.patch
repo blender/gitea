@@ -1,4 +1,4 @@
-From bd774bc32f227f3d9f534cf4555f3990b86df243 Mon Sep 17 00:00:00 2001
+From 89ac3b74acb7e1642633324a5f8da4ad7477cb8a Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Thu, 13 Nov 2025 15:44:21 +0100
 Subject: [PATCH 18/22] BLENDER: Add navigation bar icons on mobile
@@ -65,5 +65,5 @@ index 83d50a9d11..203cbe679f 100644
      display: flex;
      align-items: center;
 -- 
-2.47.3
+2.53.0
 

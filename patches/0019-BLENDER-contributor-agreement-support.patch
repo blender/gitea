@@ -1,7 +1,7 @@
-From 7e273d2285a91eee82c913225c8ef458c399f19a Mon Sep 17 00:00:00 2001
+From 6486743eb09ca1b3c3f22990c6613dedf8de9d81 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
-Subject: [PATCH 19/22] BLENDER: contributor agreement support
+Subject: [PATCH 1/1] BLENDER: contributor agreement support
 
 New models ContributorAgreement and SignedContributorAgreement are
 introduced.
@@ -30,7 +30,7 @@ automatically posts a pull request comment when a check fails:
 ---
  models/user/contributor_agreement.go          |  62 ++++++
  options/locale/locale_en-US.json              |  20 +-
- routers/api/v1/api.go                         |   2 +
+ routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
  .../user/setting/contributor_agreements.go    | 196 +++++++++++++++++
@@ -42,7 +42,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 757 insertions(+), 2 deletions(-)
+ 14 files changed, 760 insertions(+), 2 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -170,18 +170,21 @@ index 0907aeac35..2ddbfd3c46 100644
 +  "contributor_agreements.view": "View text"
  }
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index fa8d29c28b..1b720199c3 100644
+index fa8d29c28b..21ca5a2598 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
-@@ -1084,6 +1084,8 @@ func Routes() *web.Router {
- 				}, reqSelfOrAdmin(), reqBasicOrRevProxyAuth())
- 
- 				m.Get("/activities/feeds", user.ListUserActivityFeeds)
-+				// BLENDER: contributor agreement
-+				m.Get("/contributor-agreements/{slug}", user.CheckContributorAgreement)
+@@ -1087,6 +1087,11 @@ func Routes() *web.Router {
  			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
  		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
  
++		// BLENDER: contributor agreement
++		m.Group("/users", func() {
++			m.Get("/{username}/contributor-agreements/{slug}", user.CheckContributorAgreement)
++		}, context.UserAssignmentAPI())
++
+ 		// Users (requires user scope)
+ 		m.Group("/users", func() {
+ 			m.Group("/{username}", func() {
 diff --git a/routers/api/v1/user/contributor_agreement.go b/routers/api/v1/user/contributor_agreement.go
 new file mode 100644
 index 0000000000..5a75897016

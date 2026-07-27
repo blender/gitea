@@ -1,7 +1,7 @@
-From 6486743eb09ca1b3c3f22990c6613dedf8de9d81 Mon Sep 17 00:00:00 2001
+From bda6495386afdfd3fc657fac79dff0e057b0de10 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
-Subject: [PATCH 1/1] BLENDER: contributor agreement support
+Subject: [PATCH 19/22] BLENDER: contributor agreement support
 
 New models ContributorAgreement and SignedContributorAgreement are
 introduced.
@@ -33,7 +33,7 @@ automatically posts a pull request comment when a check fails:
  routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
- .../user/setting/contributor_agreements.go    | 196 +++++++++++++++++
+ .../user/setting/contributor_agreements.go    | 194 +++++++++++++++++
  routers/web/web.go                            |   9 +
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
@@ -42,7 +42,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 760 insertions(+), 2 deletions(-)
+ 14 files changed, 758 insertions(+), 2 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -483,10 +483,10 @@ index 0000000000..3f9e760101
 +}
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..48a32797e1
+index 0000000000..f6a8cc7273
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
-@@ -0,0 +1,196 @@
+@@ -0,0 +1,194 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -591,9 +591,7 @@ index 0000000000..48a32797e1
 +	// to make sure that nothing interferes with storing of the sca record.
 +	// Theoretically a rerun may be processed asynchronously.
 +	doer := ctx.Doer
-+	if err := db.WithTx(ctx, func(ctx context.Context) error {
-+		return rerunFailedActions(ctx, doer)
-+	}); err != nil {
++	if err := rerunFailedActions(ctx, doer); err != nil {
 +		log.Error("rerunFailedActions for userID=%d failed: %v", doer.ID, err)
 +	}
 +	// Update failed statuses created by the clacheck webhook.

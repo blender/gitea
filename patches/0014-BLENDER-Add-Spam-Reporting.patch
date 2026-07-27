@@ -1,4 +1,4 @@
-From 5a1f63c2ccd577573bc782d24686b5f24a2aaff2 Mon Sep 17 00:00:00 2001
+From d96d188d3d7b44d5647592e729b376dbe9dad6ef Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
 Subject: [PATCH 14/22] BLENDER: Add Spam Reporting
@@ -18,12 +18,12 @@ a new "pending spam reports" indicator in the header for admins.
  services/user/spamreport.go                   | 229 ++++++++++++++++++
  services/user/spamreport_test.go              |  93 +++++++
  templates/admin/navbar.tmpl                   |   5 +-
- templates/admin/spamreports/list.tmpl         |  88 +++++++
+ templates/admin/spamreports/list.tmpl         |  94 +++++++
  templates/base/head_navbar_icons.tmpl         |  10 +
  templates/shared/user/profile_big_avatar.tmpl |  17 ++
  .../shared/user/purgespammer_user_dialog.tmpl |  14 ++
  .../shared/user/spamreport_user_dialog.tmpl   |  14 ++
- 15 files changed, 850 insertions(+), 1 deletion(-)
+ 15 files changed, 856 insertions(+), 1 deletion(-)
  create mode 100644 models/user/spamreport.go
  create mode 100644 routers/web/admin/spamreports.go
  create mode 100644 routers/web/user/setting/spamreport.go
@@ -889,19 +889,25 @@ index a54fa530e2..9268134887 100644
  		<details class="item" {{if or .PageIsAdminRepositories (and .EnablePackages .PageIsAdminPackages)}}open{{end}}>
 diff --git a/templates/admin/spamreports/list.tmpl b/templates/admin/spamreports/list.tmpl
 new file mode 100644
-index 0000000000..dc8240ba3f
+index 0000000000..af99e44a3a
 --- /dev/null
 +++ b/templates/admin/spamreports/list.tmpl
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,94 @@
 +{{template "admin/layout_head" (dict "ctxData" . "pageClass" "admin user")}}
 +
-+<script>
++<script nonce="{{ctx.CspScriptNonce}}">
 +document.addEventListener('DOMContentLoaded', function(event) {
 +	const selectAll = document.getElementsByClassName('select-all')[0];
-+	selectAll.addEventListener('change', function() {
++	selectAll && selectAll.addEventListener('change', function() {
 +		const checkboxes = document.getElementsByClassName('managed-by-select-all');
 +		for (const checkbox of checkboxes) {
 +			checkbox.checked = selectAll.checked;
++		}
++	});
++	const purgeBtn = document.getElementsByClassName('purge-btn')[0];
++	purgeBtn && purgeBtn.addEventListener('click', function(e) {
++		if (!confirm('Purge selected accounts?')) {
++			e.preventDefault();
 +		}
 +	});
 +});
@@ -968,7 +974,7 @@ index 0000000000..dc8240ba3f
 +			</div>
 +			{{if eq $.FilterStatus 0}}
 +				<br />
-+				<button type="submit" name="action" value="process" class="ui submit primary button btn-submit red" onclick="return confirm('Purge selected accounts?');">Purge accounts</button>
++				<button type="submit" name="action" value="process" class="ui submit primary button btn-submit red purge-btn">Purge accounts</button>
 +				<button type="submit" name="action" value="dismiss" class="ui submit primary button btn-submit">Dismiss reports</button>
 +			{{end}}
 +		</form>

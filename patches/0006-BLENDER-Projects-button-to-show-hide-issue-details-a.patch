@@ -1,4 +1,4 @@
-From 820dc1ebf2911eda341335edba5b66dae5b3bf9b Mon Sep 17 00:00:00 2001
+From c4f58a0d2a51689ac792afadc580e007376b458e Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Thu, 23 Oct 2025 20:18:11 +0200
 Subject: [PATCH 06/22] BLENDER: Projects: button to show/hide issue details
@@ -7,38 +7,26 @@ Subject: [PATCH 06/22] BLENDER: Projects: button to show/hide issue details
 Both are off by default. This is implemented fully on the frontend, so
 all issues and their details are still always loaded.
 ---
- modules/templates/helper.go       | 18 ++++++++-----
- templates/projects/view.tmpl      | 43 ++++++++++++++++++++++++++++++-
- templates/repo/issue/card.tmpl    | 27 +++++++++----------
+ modules/templates/helper.go       |  5 ++++
+ templates/projects/view.tmpl      | 47 ++++++++++++++++++++++++++++++-
+ templates/repo/issue/card.tmpl    | 27 +++++++++---------
  web_src/css/features/projects.css |  8 ++++++
  web_src/css/repo/issue-card.css   |  2 ++
- 5 files changed, 78 insertions(+), 20 deletions(-)
+ 5 files changed, 75 insertions(+), 14 deletions(-)
 
 diff --git a/modules/templates/helper.go b/modules/templates/helper.go
-index 662b89998e..f169c2ed73 100644
+index 662b89998e..370d3bded1 100644
 --- a/modules/templates/helper.go
 +++ b/modules/templates/helper.go
-@@ -30,12 +30,13 @@ func newFuncMapWebPage() template.FuncMap {
- 
- 		// -----------------------------------------------------------------
- 		// html/template related functions
--		"dict":        dict, // it's lowercase because this name has been widely used. Our other functions should have uppercase names.
--		"Iif":         iif,
--		"Eval":        evalTokens,
--		"HTMLFormat":  htmlFormat,
--		"QueryEscape": queryEscape,
--		"QueryBuild":  QueryBuild,
-+		"dict":        dict, // it's lowercase because this name has been widely used. Our other functions should have uppercase names.
-+		"Iif":         iif,
-+		"Eval":        evalTokens,
-+		"HTMLFormat":  htmlFormat,
-+		"QueryEscape": queryEscape,
-+		"QueryBuild":  QueryBuild,
+@@ -36,6 +36,7 @@ func newFuncMapWebPage() template.FuncMap {
+ 		"HTMLFormat":  htmlFormat,
+ 		"QueryEscape": queryEscape,
+ 		"QueryBuild":  QueryBuild,
 +		"JSEscape":    jsEscapeSafe,
  
  		"PathEscape":         url.PathEscape,
  		"PathEscapeSegments": util.PathEscapeSegments,
-@@ -160,6 +162,10 @@ func htmlFormat(s any, args ...any) template.HTML {
+@@ -160,6 +161,10 @@ func htmlFormat(s any, args ...any) template.HTML {
  	panic(fmt.Sprintf("unexpected type %T", s))
  }
  
@@ -50,7 +38,7 @@ index 662b89998e..f169c2ed73 100644
  	return template.URL(url.QueryEscape(s))
  }
 diff --git a/templates/projects/view.tmpl b/templates/projects/view.tmpl
-index 8f4f1d60fd..f8b969fa2b 100644
+index 8f4f1d60fd..23bcc03038 100644
 --- a/templates/projects/view.tmpl
 +++ b/templates/projects/view.tmpl
 @@ -23,6 +23,16 @@
@@ -58,11 +46,11 @@ index 8f4f1d60fd..f8b969fa2b 100644
  			}}
  		</div>
 +			<div class="ui compact mini menu" style="margin-left: auto; margin-right: 1em;">
-+				<button class="item btn" onclick="clickDetailsView()">
++				<button class="item btn details-view-btn">
 +					<span class="issue-card-details">Show Details</span>
 +					<span class="issue-card-details tw-hidden">Hide Details</span>
 +				</button>
-+				<button class="item btn" onclick="clickClosedView()">
++				<button class="item btn closed-view-btn">
 +					<span class="issue-card-closed">Show Closed</span>
 +					<span class="issue-card-closed tw-hidden">Hide Closed</span>
 +				</button>
@@ -79,11 +67,11 @@ index 8f4f1d60fd..f8b969fa2b 100644
  							{{template "repo/issue/card" (dict "Issue" . "Page" $)}}
  						</div>
  					{{end}}
-@@ -132,6 +142,37 @@
+@@ -132,6 +142,41 @@
  	</div>
  </div>
  
-+<script>
++<script nonce="{{ctx.CspScriptNonce}}">
 +	keyDetails = 'project-show-issue-details:{{.Repository.FullName | JSEscape}}:{{.Project.ID}}';
 +	keyClosed = 'project-show-issue-closed:{{.Repository.FullName | JSEscape}}:{{.Project.ID}}';
 +
@@ -99,6 +87,8 @@ index 8f4f1d60fd..f8b969fa2b 100644
 +	if (localStorage.getItem(keyDetails) === 'true') {
 +		toggleDetailsView();
 +	}
++	const detailsViewBtn = document.getElementsByClassName('details-view-btn')[0];
++	detailsViewBtn.addEventListener('click', clickDetailsView);
 +
 +	function toggleClosedView() {
 +		for (const elem of document.querySelectorAll('.issue-card-closed')) {
@@ -112,6 +102,8 @@ index 8f4f1d60fd..f8b969fa2b 100644
 +	if (localStorage.getItem(keyClosed) === 'true') {
 +		toggleClosedView();
 +	}
++	const closedViewBtn = document.getElementsByClassName('closed-view-btn')[0];
++	closedViewBtn.addEventListener('click', clickClosedView);
 +</script>
 +
  {{if $canWriteProject}}

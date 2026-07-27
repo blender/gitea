@@ -1,4 +1,4 @@
-From bfe01f3108891dd7fc5b4944fa8241651f183475 Mon Sep 17 00:00:00 2001
+From 7e273d2285a91eee82c913225c8ef458c399f19a Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
 Subject: [PATCH 19/22] BLENDER: contributor agreement support
@@ -33,7 +33,7 @@ automatically posts a pull request comment when a check fails:
  routers/api/v1/api.go                         |   2 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
- .../user/setting/contributor_agreements.go    | 194 +++++++++++++++++
+ .../user/setting/contributor_agreements.go    | 196 +++++++++++++++++
  routers/web/web.go                            |   9 +
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
@@ -42,7 +42,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 755 insertions(+), 2 deletions(-)
+ 14 files changed, 757 insertions(+), 2 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -480,10 +480,10 @@ index 0000000000..3f9e760101
 +}
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..6a4e0fad3c
+index 0000000000..48a32797e1
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
-@@ -0,0 +1,194 @@
+@@ -0,0 +1,196 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -673,7 +673,9 @@ index 0000000000..6a4e0fad3c
 +				Description: "Contributor agreement is signed",
 +				State:       commitstatus.CommitStatusSuccess,
 +			}
-+			commitstatus_service.CreateCommitStatus(ctx, repo, user, sha, &statusSuccess)
++			if err := commitstatus_service.CreateCommitStatus(ctx, repo, user, sha, &statusSuccess); err != nil {
++				return fmt.Errorf("failed to CreateCommitStatus for repoID [%d] sha [%s]: %w", repo.ID, sha, err)
++			}
 +		}
 +	}
 +	return nil

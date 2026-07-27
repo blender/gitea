@@ -1,4 +1,4 @@
-From bf924a9085b24967a129800d50b65e9abec1cd75 Mon Sep 17 00:00:00 2001
+From b87f860c5e6ebc04de1e9f48ed3156b22de16a1e Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:07:25 +0200
 Subject: [PATCH 10/22] BLENDER: Workaround internal server error comparing
@@ -12,7 +12,7 @@ And add trace log for investigation.
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/modules/gitrepo/fetch.go b/modules/gitrepo/fetch.go
-index 0474d6111e..4b9da54239 100644
+index b50571e5b2..84beb11d6b 100644
 --- a/modules/gitrepo/fetch.go
 +++ b/modules/gitrepo/fetch.go
 @@ -21,7 +21,9 @@ import (
@@ -27,5 +27,5 @@ index 0474d6111e..4b9da54239 100644
  			AddDynamicArguments(commitID))
  	})
 -- 
-2.47.3
+2.53.0
 

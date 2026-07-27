@@ -1,4 +1,4 @@
-From fe28143968f59a259069e4ac005530349aa7b9c5 Mon Sep 17 00:00:00 2001
+From 3eb1b0239353ce1634af6231f03e99593ab9c173 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 2 Apr 2025 17:30:05 +0200
 Subject: [PATCH 13/22] BLENDER: Sync user badges on sign-in
@@ -13,10 +13,10 @@ Don't escalate any errors, only log them, to avoid breaking sign-in.
  create mode 100644 services/user/badge_test.go
 
 diff --git a/routers/web/auth/oauth.go b/routers/web/auth/oauth.go
-index 7dbdb0f37f..418b45d996 100644
+index b805d12808..7fde49dc41 100644
 --- a/routers/web/auth/oauth.go
 +++ b/routers/web/auth/oauth.go
-@@ -343,8 +343,34 @@ func oauth2UpdateAvatarIfNeed(ctx *context.Context, avatarURL string, u *user_mo
+@@ -355,8 +355,34 @@ func oauth2UpdateAvatarIfNeed(ctx *context.Context, avatarURL string, u *user_mo
  	}
  }
  
@@ -53,7 +53,7 @@ index 7dbdb0f37f..418b45d996 100644
  	}
 diff --git a/services/user/badge.go b/services/user/badge.go
 new file mode 100644
-index 0000000000..be6124a7fe
+index 0000000000..2318514ef0
 --- /dev/null
 +++ b/services/user/badge.go
 @@ -0,0 +1,55 @@
@@ -66,9 +66,9 @@ index 0000000000..be6124a7fe
 +	"context"
 +	"fmt"
 +
-+	"code.gitea.io/gitea/models/db"
-+	user_model "code.gitea.io/gitea/models/user"
-+	"code.gitea.io/gitea/modules/log"
++	"gitea.dev/models/db"
++	user_model "gitea.dev/models/user"
++	"gitea.dev/modules/log"
 +)
 +
 +// BLENDER: sync user badges
@@ -114,7 +114,7 @@ index 0000000000..be6124a7fe
 +}
 diff --git a/services/user/badge_test.go b/services/user/badge_test.go
 new file mode 100644
-index 0000000000..91267d71aa
+index 0000000000..43e7f07b5b
 --- /dev/null
 +++ b/services/user/badge_test.go
 @@ -0,0 +1,79 @@
@@ -131,8 +131,8 @@ index 0000000000..91267d71aa
 +	"sync"
 +	"testing"
 +
-+	"code.gitea.io/gitea/models/unittest"
-+	user_model "code.gitea.io/gitea/models/user"
++	"gitea.dev/models/unittest"
++	user_model "gitea.dev/models/user"
 +
 +	"github.com/stretchr/testify/assert"
 +)
@@ -198,5 +198,5 @@ index 0000000000..91267d71aa
 +	}
 +}
 -- 
-2.47.3
+2.53.0
 

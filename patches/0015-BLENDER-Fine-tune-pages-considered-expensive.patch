@@ -1,4 +1,4 @@
-From 8220387ce2fa8e261c93a0a95c9771b4af34c9be Mon Sep 17 00:00:00 2001
+From 6f11f5cba2a529300fe04d11794dee108e5ecac0 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Thu, 12 Jun 2025 14:43:47 +0200
 Subject: [PATCH 15/22] BLENDER: Fine tune pages considered expensive
@@ -8,10 +8,10 @@ Subject: [PATCH 15/22] BLENDER: Fine tune pages considered expensive
  1 file changed, 13 insertions(+), 12 deletions(-)
 
 diff --git a/routers/common/blockexpensive.go b/routers/common/blockexpensive.go
-index fec364351c..f9d05836cd 100644
+index 62cb1c7050..0936213fd9 100644
 --- a/routers/common/blockexpensive.go
 +++ b/routers/common/blockexpensive.go
-@@ -40,25 +40,26 @@ func isRoutePathExpensive(routePattern string) bool {
+@@ -41,25 +41,26 @@ func isRoutePathExpensive(routePattern string) bool {
  
  	expensivePaths := []string{
  		// code related
@@ -51,5 +51,5 @@ index fec364351c..f9d05836cd 100644
  		// activity
  		"/{username}/{reponame}/activity/",
 -- 
-2.47.3
+2.53.0
 

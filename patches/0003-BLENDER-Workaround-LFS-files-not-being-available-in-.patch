@@ -1,4 +1,4 @@
-From 4b2c9eb6995284aae06962d33beb6a0fe65414ff Mon Sep 17 00:00:00 2001
+From 167c674aa7c773852ba03ba2a2c7497d501c866b Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:32:53 +0200
 Subject: [PATCH 03/22] BLENDER: Workaround LFS files not being available in
@@ -12,10 +12,10 @@ file is downloaded.
  2 files changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/models/git/lfs.go b/models/git/lfs.go
-index 1f3d086ac2..3a33c46ae9 100644
+index c5018cb398..62e6456374 100644
 --- a/models/git/lfs.go
 +++ b/models/git/lfs.go
-@@ -192,7 +192,7 @@ func CountLFSMetaObjects(ctx context.Context, repoID int64) (int64, error) {
+@@ -191,7 +191,7 @@ func CountLFSMetaObjects(ctx context.Context, repoID int64) (int64, error) {
  
  // LFSObjectAccessible checks if a provided Oid is accessible to the user
  func LFSObjectAccessible(ctx context.Context, user *user_model.User, oid string) (bool, error) {
@@ -25,10 +25,10 @@ index 1f3d086ac2..3a33c46ae9 100644
  		return count > 0, err
  	}
 diff --git a/services/lfs/server.go b/services/lfs/server.go
-index 26eb4878c6..e0b3dd136e 100644
+index 8c7de2ccb6..e4531408e2 100644
 --- a/services/lfs/server.go
 +++ b/services/lfs/server.go
-@@ -284,6 +284,26 @@ func BatchHandler(ctx *context.Context) {
+@@ -276,6 +276,26 @@ func BatchHandler(ctx *context.Context) {
  			responseObject = buildObjectResponse(rc, p, false, !exists, err)
  		} else {
  			var err *lfs_module.ObjectError
@@ -56,5 +56,5 @@ index 26eb4878c6..e0b3dd136e 100644
  				err = &lfs_module.ObjectError{
  					Code:    http.StatusNotFound,
 -- 
-2.47.3
+2.53.0
 

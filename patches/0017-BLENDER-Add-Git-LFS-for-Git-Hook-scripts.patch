@@ -1,4 +1,4 @@
-From 0577b4fec1afec97ffe34178d2d9b1b384f43a86 Mon Sep 17 00:00:00 2001
+From ec374d0a6b1072d88ec43b9ba287f4af71624ccb Mon Sep 17 00:00:00 2001
 From: Bart van der Braak <bart@blender.org>
 Date: Tue, 7 Oct 2025 15:02:05 +0200
 Subject: [PATCH 17/22] BLENDER: Add Git LFS for Git Hook scripts
@@ -8,7 +8,7 @@ Subject: [PATCH 17/22] BLENDER: Add Git LFS for Git Hook scripts
  1 file changed, 1 insertion(+)
 
 diff --git a/Dockerfile.rootless b/Dockerfile.rootless
-index 116b7adef8..257bed0d98 100644
+index eda41c865b..78cb4dc0b9 100644
 --- a/Dockerfile.rootless
 +++ b/Dockerfile.rootless
 @@ -49,6 +49,7 @@ RUN apk --no-cache add \
@@ -20,5 +20,5 @@ index 116b7adef8..257bed0d98 100644
      gnupg \
      openssh-keygen
 -- 
-2.47.3
+2.53.0
 

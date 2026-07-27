@@ -1,4 +1,4 @@
-From 1a64ab3dc14b7625ce6b7dbe1d829f0bd450414a Mon Sep 17 00:00:00 2001
+From e2ec213d64e43365279b1acc0ec8cce77fe1cb4f Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:33:32 +0200
 Subject: [PATCH 04/22] BLENDER: Don't allow assigning large teams as reviewers
@@ -11,10 +11,10 @@ To avoid accidentally spamming hundreds of people.
  3 files changed, 19 insertions(+), 3 deletions(-)
 
 diff --git a/models/organization/team.go b/models/organization/team.go
-index 7f3a9b3829..f0717faf2e 100644
+index ff33b79985..817d3e6016 100644
 --- a/models/organization/team.go
 +++ b/models/organization/team.go
-@@ -247,3 +247,19 @@ func IncrTeamRepoNum(ctx context.Context, teamID int64) error {
+@@ -296,3 +296,19 @@ func IncrTeamRepoNum(ctx context.Context, teamID int64) error {
  	_, err := db.GetEngine(ctx).Incr("num_repos").ID(teamID).Update(new(Team))
  	return err
  }
@@ -35,7 +35,7 @@ index 7f3a9b3829..f0717faf2e 100644
 +	return smallTeams, nil
 +}
 diff --git a/routers/web/shared/mention/mention.go b/routers/web/shared/mention/mention.go
-index 5f163cb146..e02da20de6 100644
+index df2826ae42..bbeda69cf9 100644
 --- a/routers/web/shared/mention/mention.go
 +++ b/routers/web/shared/mention/mention.go
 @@ -65,9 +65,9 @@ func (c *Collector) AddMentionableTeams(ctx context.Context, doer, owner *user_m
@@ -51,7 +51,7 @@ index 5f163cb146..e02da20de6 100644
  	if err != nil {
  		return err
 diff --git a/services/pull/reviewer.go b/services/pull/reviewer.go
-index 139aeeb950..d7f8d3dc9b 100644
+index b98c85ebc3..4d4e37da35 100644
 --- a/services/pull/reviewer.go
 +++ b/services/pull/reviewer.go
 @@ -78,5 +78,5 @@ func GetReviewerTeams(ctx context.Context, repo *repo_model.Repository) ([]*orga
@@ -62,5 +62,5 @@ index 139aeeb950..d7f8d3dc9b 100644
 +	return organization.FilterLargeTeams(organization.GetTeamsWithAccessToAnyRepoUnit(ctx, repo.OwnerID, repo.ID, perm.AccessModeRead, unit.TypePullRequests))
  }
 -- 
-2.47.3
+2.53.0
 

@@ -1,4 +1,4 @@
-From ab305db7214f442a80ce6df7ed714ae3cae00e0b Mon Sep 17 00:00:00 2001
+From 3816e01a082f9b28ec782f1ab714f5754f3ab436 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:28:51 +0200
 Subject: [PATCH 01/22] BLENDER: Blender ID goth provider
@@ -25,11 +25,11 @@ Provider authored by Matti Ranta and Arnd Marijnissen.
  create mode 100644 services/auth/source/oauth2/blenderid/session_test.go
 
 diff --git a/go.mod b/go.mod
-index a2b35f48e0..8e4601f498 100644
+index 1f2e923ce2..45d6b9cb97 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -233,6 +233,7 @@ require (
- 	github.com/minio/minlz v1.1.0 // indirect
+@@ -223,6 +223,7 @@ require (
+ 	github.com/minio/minlz v1.1.1 // indirect
  	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
  	github.com/modern-go/reflect2 v1.0.2 // indirect
 +	github.com/mozillazg/go-unidecode v0.2.0 // indirect
@@ -37,10 +37,10 @@ index a2b35f48e0..8e4601f498 100644
  	github.com/mschoch/smat v0.2.0 // indirect
  	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 diff --git a/go.sum b/go.sum
-index 5b228a00f4..41ddeffe56 100644
+index 34ab2024ed..7bdd83e4e9 100644
 --- a/go.sum
 +++ b/go.sum
-@@ -549,6 +549,9 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
+@@ -545,6 +545,9 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w
  github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
  github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
  github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
@@ -242,7 +242,7 @@ index 0000000000..671e5e4f54
 +}
 diff --git a/services/auth/source/oauth2/blenderid/blenderid_test.go b/services/auth/source/oauth2/blenderid/blenderid_test.go
 new file mode 100644
-index 0000000000..283ba0898a
+index 0000000000..e257bcf2da
 --- /dev/null
 +++ b/services/auth/source/oauth2/blenderid/blenderid_test.go
 @@ -0,0 +1,70 @@
@@ -254,7 +254,7 @@ index 0000000000..283ba0898a
 +	"os"
 +	"testing"
 +
-+	"code.gitea.io/gitea/services/auth/source/oauth2/blenderid"
++	"gitea.dev/services/auth/source/oauth2/blenderid"
 +
 +	"github.com/markbates/goth"
 +	"github.com/stretchr/testify/assert"
@@ -318,7 +318,7 @@ index 0000000000..283ba0898a
 +}
 diff --git a/services/auth/source/oauth2/blenderid/gitealize_usernames.go b/services/auth/source/oauth2/blenderid/gitealize_usernames.go
 new file mode 100644
-index 0000000000..880516c8e2
+index 0000000000..bb6b58f5d9
 --- /dev/null
 +++ b/services/auth/source/oauth2/blenderid/gitealize_usernames.go
 @@ -0,0 +1,65 @@
@@ -330,7 +330,7 @@ index 0000000000..880516c8e2
 +	"regexp"
 +	"strings"
 +
-+	"code.gitea.io/gitea/models/user"
++	"gitea.dev/models/user"
 +
 +	"github.com/mozillazg/go-unidecode"
 +)
@@ -510,7 +510,7 @@ index 0000000000..52a2d21745
 +}
 diff --git a/services/auth/source/oauth2/blenderid/session_test.go b/services/auth/source/oauth2/blenderid/session_test.go
 new file mode 100644
-index 0000000000..7f5b619873
+index 0000000000..96f57dd94d
 --- /dev/null
 +++ b/services/auth/source/oauth2/blenderid/session_test.go
 @@ -0,0 +1,51 @@
@@ -521,7 +521,7 @@ index 0000000000..7f5b619873
 +import (
 +	"testing"
 +
-+	"code.gitea.io/gitea/services/auth/source/oauth2/blenderid"
++	"gitea.dev/services/auth/source/oauth2/blenderid"
 +
 +	"github.com/markbates/goth"
 +	"github.com/stretchr/testify/assert"
@@ -566,21 +566,21 @@ index 0000000000..7f5b619873
 +	a.Equal(s.String(), s.Marshal())
 +}
 diff --git a/services/auth/source/oauth2/providers_custom.go b/services/auth/source/oauth2/providers_custom.go
-index 65cf538ad7..f6f49ada04 100644
+index e9e8df02ea..4e73aa5c6f 100644
 --- a/services/auth/source/oauth2/providers_custom.go
 +++ b/services/auth/source/oauth2/providers_custom.go
 @@ -5,6 +5,7 @@ package oauth2
  
  import (
- 	"code.gitea.io/gitea/modules/setting"
-+	"code.gitea.io/gitea/services/auth/source/oauth2/blenderid"
+ 	"gitea.dev/modules/setting"
++	"gitea.dev/services/auth/source/oauth2/blenderid"
  
  	"github.com/markbates/goth"
  	"github.com/markbates/goth/providers/azureadv2"
-@@ -120,4 +121,14 @@ func init() {
- 			}), nil
- 		},
+@@ -122,6 +123,16 @@ func init() {
  	))
+ 
+ 	RegisterGothProvider(&AwsCognitoProvider{})
 +
 +	RegisterGothProvider(NewCustomProvider(
 +		"blenderid", "Blender ID", &CustomURLSettings{
@@ -592,6 +592,8 @@ index 65cf538ad7..f6f49ada04 100644
 +			return blenderid.NewCustomisedURL(clientID, secret, callbackURL, custom.AuthURL, custom.TokenURL, custom.ProfileURL, scopes...), nil
 +		}))
  }
+ 
+ const ProviderNameAwsCognito = "aws-cognito"
 -- 
-2.47.3
+2.53.0
 

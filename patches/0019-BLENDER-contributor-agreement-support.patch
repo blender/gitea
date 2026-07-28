@@ -1,4 +1,4 @@
-From bda6495386afdfd3fc657fac79dff0e057b0de10 Mon Sep 17 00:00:00 2001
+From 84cea8498b5ae3ede19a4f33793d43bad711cd2d Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
 Subject: [PATCH 19/22] BLENDER: contributor agreement support
@@ -120,10 +120,10 @@ index 0000000000..0dd3373fbc
 +	db.RegisterModel(new(SignedContributorAgreement))
 +}
 diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
-index 0907aeac35..2ddbfd3c46 100644
+index 8bfbf601c3..8ac4b40e28 100644
 --- a/options/locale/locale_en-US.json
 +++ b/options/locale/locale_en-US.json
-@@ -675,6 +675,7 @@
+@@ -676,6 +676,7 @@
    "settings.organization": "Organizations",
    "settings.uid": "UID",
    "settings.webauthn": "Two-Factor Authentication (Security Keys)",
@@ -157,7 +157,7 @@ index 0907aeac35..2ddbfd3c46 100644
    "admin.orgs.org_manage_panel": "Organization Management",
    "admin.orgs.name": "Name",
    "admin.orgs.teams": "Teams",
-@@ -3943,5 +3956,10 @@
+@@ -3947,5 +3960,10 @@
    "actions.general.cross_repo_desc": "Allow the selected repositories to be accessed (read-only) by all the repositories in this owner with GITEA_TOKEN when running Actions jobs.",
    "actions.general.cross_repo_selected": "Selected repositories",
    "actions.general.cross_repo_target_repos": "Target Repositories",
@@ -709,13 +709,13 @@ index f9d4763016..8239eeafc8 100644
  			m.Get("", admin.Organizations)
  		})
 diff --git a/services/user/delete.go b/services/user/delete.go
-index 5592ac7c4b..08d5e16f9d 100644
+index e6ff7075c4..7aba706ce4 100644
 --- a/services/user/delete.go
 +++ b/services/user/delete.go
-@@ -96,6 +96,8 @@ func deleteUser(ctx context.Context, u *user_model.User, purge bool) (err error)
- 		&user_model.Blocking{BlockeeID: u.ID},
- 		&actions_model.ActionRunnerToken{OwnerID: u.ID},
- 		&actions_model.ActionScopedWorkflowSource{OwnerID: u.ID},
+@@ -100,6 +100,8 @@ func deleteUser(ctx context.Context, u *user_model.User, purge bool) (err error)
+ 		&auth_model.WebAuthnCredential{UserID: u.ID},
+ 		&activities_model.Notification{UserID: u.ID},
+ 		&issues_model.IssueWatch{UserID: u.ID},
 +		// BLENDER: contributor agreement
 +		&user_model.SignedContributorAgreement{UserID: u.ID},
  	); err != nil {
@@ -852,7 +852,7 @@ index 0000000000..9c4db6809d
 +
 +{{template "admin/layout_footer" .}}
 diff --git a/templates/swagger/v1_json.tmpl b/templates/swagger/v1_json.tmpl
-index 41e4209648..c7d864e0bf 100644
+index 7735ecb4b4..6990479e58 100644
 --- a/templates/swagger/v1_json.tmpl
 +++ b/templates/swagger/v1_json.tmpl
 @@ -21397,6 +21397,42 @@

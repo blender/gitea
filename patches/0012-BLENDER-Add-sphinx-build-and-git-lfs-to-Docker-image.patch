@@ -1,0 +1,33 @@
+From 391c99f0bec5366ed0f8c5560ef36dfd67d40e1e Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Wed, 4 Dec 2024 15:29:10 +0100
+Subject: [PATCH] BLENDER: Add `sphinx-build` and `git-lfs` to Docker image
+
+- RestructuredText rendering using Sphinx to HTML
+- Git LFS commandline is used in our `deny_binary` Git hook
+
+See: https://projects.blender.org/infrastructure/gitea-custom/src/branch/main/sphinx#deployment
+---
+ Dockerfile.rootless | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/Dockerfile.rootless b/Dockerfile.rootless
+index 4be5a4f8b3..4732f503c8 100644
+--- a/Dockerfile.rootless
++++ b/Dockerfile.rootless
+@@ -53,6 +53,12 @@ RUN apk --no-cache add \
+     gnupg \
+     openssh-keygen
+ 
++# External renderers
++RUN apk add --no-cache python3 py3-sphinx
++
++# Git hooks
++RUN apk add --no-cache git-lfs
++
+ RUN addgroup \
+     -S -g 1000 \
+     git && \
+-- 
+2.54.0
+

@@ -7,7 +7,7 @@ on:
       tag:
         description: 'Specify an upstream version tag'
         required: true
-        default: 'v1.25.0'
+        default: 'v1.27.1'
       suffix:
         description: 'Optional image tag suffix'
         default: ''

@@ -1,7 +1,7 @@
-From 84cea8498b5ae3ede19a4f33793d43bad711cd2d Mon Sep 17 00:00:00 2001
+From aa2de49db6c467d6b6782fd7247be4c08aeeb47a Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
-Subject: [PATCH 19/22] BLENDER: contributor agreement support
+Subject: [PATCH 18/21] BLENDER: contributor agreement support
 
 New models ContributorAgreement and SignedContributorAgreement are
 introduced.
@@ -33,8 +33,12 @@ automatically posts a pull request comment when a check fails:
  routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
+ routers/web/repo/issue_list.go                |   2 +-
+ routers/web/user/home.go                      |   2 +-
+ routers/web/user/notification.go              |   2 +-
  .../user/setting/contributor_agreements.go    | 194 +++++++++++++++++
  routers/web/web.go                            |   9 +
+ services/pull/pull.go                         |  27 ++-
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
  .../batch_sign.tmpl                           |  35 +++
@@ -42,7 +46,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 14 files changed, 758 insertions(+), 2 deletions(-)
+ 18 files changed, 785 insertions(+), 8 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -481,9 +485,48 @@ index 0000000000..3f9e760101
 +
 +	ctx.Redirect(setting.AppSubURL + "/-/admin/signed_contributor_agreements")
 +}
+diff --git a/routers/web/repo/issue_list.go b/routers/web/repo/issue_list.go
+index 5ccef292a2..36f3f9b092 100644
+--- a/routers/web/repo/issue_list.go
++++ b/routers/web/repo/issue_list.go
+@@ -644,7 +644,7 @@ func prepareIssueFilterAndList(ctx *context.Context, milestoneID int64, projectI
+ 		}
+ 	}
+ 
+-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
++	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
+ 	if err != nil {
+ 		ctx.ServerError("GetIssuesAllCommitStatus", err)
+ 		return
+diff --git a/routers/web/user/home.go b/routers/web/user/home.go
+index 75b51151f3..2f903e6dbd 100644
+--- a/routers/web/user/home.go
++++ b/routers/web/user/home.go
+@@ -554,7 +554,7 @@ func buildIssueOverview(ctx *context.Context, unitType unit.Type) {
+ 		}
+ 	}
+ 
+-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
++	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
+ 	if err != nil {
+ 		ctx.ServerError("GetIssuesLastCommitStatus", err)
+ 		return
+diff --git a/routers/web/user/notification.go b/routers/web/user/notification.go
+index b82b32f687..1ab7cec78f 100644
+--- a/routers/web/user/notification.go
++++ b/routers/web/user/notification.go
+@@ -268,7 +268,7 @@ func NotificationSubscriptions(ctx *context.Context) {
+ 		return
+ 	}
+ 
+-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
++	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
+ 	if err != nil {
+ 		ctx.ServerError("GetIssuesAllCommitStatus", err)
+ 		return
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..f6a8cc7273
+index 0000000000..f77770c0da
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
 @@ -0,0 +1,194 @@
@@ -642,7 +685,7 @@ index 0000000000..f6a8cc7273
 +	if err != nil {
 +		return fmt.Errorf("failed to fetch issues: %w", err)
 +	}
-+	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, pullsAsIssues)
++	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, pullsAsIssues, false)
 +	if err != nil {
 +		return fmt.Errorf("failed to GetIssuesAllCommitStatus: %w", err)
 +	}
@@ -708,6 +751,64 @@ index f9d4763016..8239eeafc8 100644
  		m.Group("/orgs", func() {
  			m.Get("", admin.Organizations)
  		})
+diff --git a/services/pull/pull.go b/services/pull/pull.go
+index 6af56b7e8f..de745573a6 100644
+--- a/services/pull/pull.go
++++ b/services/pull/pull.go
+@@ -934,7 +934,10 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
+ }
+ 
+ // GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status
+-func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
++// BLENDER: contributor agreement
++// Modified func signature, all callers that render a list of PRs need to pass
++// skipClacheck=false.
++func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
+ 	if err := issues.LoadPullRequests(ctx); err != nil {
+ 		return nil, nil, err
+ 	}
+@@ -968,7 +971,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
+ 			gitRepos[issue.RepoID] = gitRepo
+ 		}
+ 
+-		statuses, lastStatus, err := getAllCommitStatus(ctx, gitRepo, issue.PullRequest)
++		// BLENDER: contributor agreement
++		statuses, lastStatus, err := getAllCommitStatus(ctx, gitRepo, issue.PullRequest, skipClacheck)
+ 		if err != nil {
+ 			log.Error("getAllCommitStatus: cant get commit statuses of pull [%d]: %v", issue.PullRequest.ID, err)
+ 			continue
+@@ -980,13 +984,30 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
+ }
+ 
+ // getAllCommitStatus get pr's commit statuses.
+-func getAllCommitStatus(ctx context.Context, gitRepo *git.Repository, pr *issues_model.PullRequest) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
++// BLENDER: contributor agreement, modified func signature
++func getAllCommitStatus(ctx context.Context, gitRepo *git.Repository, pr *issues_model.PullRequest, skipClacheck bool) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
+ 	sha, shaErr := gitRepo.GetRefCommitID(pr.GetGitHeadRefName())
+ 	if shaErr != nil {
+ 		return nil, nil, shaErr
+ 	}
+ 
+ 	statuses, err = git_model.GetLatestCommitStatus(ctx, pr.BaseRepo.ID, sha, db.ListOptionsAll)
++
++	// BLENDER: contributor agreement
++	// Filter out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere:
++	// https://projects.blender.org/infrastructure/meta/issues/208
++	if skipClacheck {
++		clacheckIndex := -1
++		for i, s := range statuses {
++			if s.State.IsSuccess() && strings.Contains(s.Context, "clacheck") {
++				clacheckIndex = i
++			}
++		}
++		if clacheckIndex != -1 {
++			statuses = append(statuses[:clacheckIndex], statuses[clacheckIndex+1:]...)
++		}
++	}
++
+ 	lastStatus = git_model.CalcCommitStatus(statuses)
+ 	return statuses, lastStatus, err
+ }
 diff --git a/services/user/delete.go b/services/user/delete.go
 index e6ff7075c4..7aba706ce4 100644
 --- a/services/user/delete.go

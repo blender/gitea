@@ -1,4 +1,4 @@
-From f01af80edefed4d79055460498f8d02920bb84c1 Mon Sep 17 00:00:00 2001
+From 29f63039b6953234bc91b31aceb5aa361a5d97c3 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
 Subject: [PATCH 18/21] BLENDER: contributor agreement support
@@ -33,13 +33,15 @@ automatically posts a pull request comment when a check fails:
  routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
  .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
+ routers/web/repo/commit.go                    |   4 +
  routers/web/repo/issue_list.go                |   2 +-
  routers/web/user/home.go                      |   2 +-
  routers/web/user/notification.go              |   2 +-
  .../user/setting/contributor_agreements.go    | 194 +++++++++++++++++
  routers/web/web.go                            |   9 +
- services/git/commit.go                        |  14 ++
- services/pull/pull.go                         |  27 ++-
+ services/git/clacheck.go                      |  26 +++
+ services/git/commit.go                        |   5 +
+ services/pull/pull.go                         |  19 +-
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
  .../batch_sign.tmpl                           |  35 +++
@@ -47,11 +49,12 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1_json.tmpl                |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 19 files changed, 799 insertions(+), 8 deletions(-)
+ 21 files changed, 812 insertions(+), 8 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
  create mode 100644 routers/web/user/setting/contributor_agreements.go
+ create mode 100644 services/git/clacheck.go
  create mode 100644 templates/admin/signed_contributor_agreements/batch_sign.tmpl
  create mode 100644 templates/admin/signed_contributor_agreements/list.tmpl
  create mode 100644 templates/user/settings/contributor_agreements.tmpl
@@ -486,6 +489,21 @@ index 0000000000..3f9e760101
 +
 +	ctx.Redirect(setting.AppSubURL + "/-/admin/signed_contributor_agreements")
 +}
+diff --git a/routers/web/repo/commit.go b/routers/web/repo/commit.go
+index b1b1909e10..f9d2ccfe8d 100644
+--- a/routers/web/repo/commit.go
++++ b/routers/web/repo/commit.go
+@@ -392,6 +392,10 @@ func Diff(ctx *context.Context) {
+ 		git_model.CommitStatusesHideActionsURL(ctx, statuses)
+ 	}
+ 
++	// BLENDER: contributor agreement
++	// hide clacheck statuses on individual PR commits
++	statuses = git_service.HideClacheckStatus(statuses)
++
+ 	ctx.Data["CommitStatus"] = git_model.CalcCommitStatus(statuses)
+ 	ctx.Data["CommitStatuses"] = statuses
+ 
 diff --git a/routers/web/repo/issue_list.go b/routers/web/repo/issue_list.go
 index 5ccef292a2..36f3f9b092 100644
 --- a/routers/web/repo/issue_list.go
@@ -752,40 +770,56 @@ index f9d4763016..8239eeafc8 100644
  		m.Group("/orgs", func() {
  			m.Get("", admin.Organizations)
  		})
+diff --git a/services/git/clacheck.go b/services/git/clacheck.go
+new file mode 100644
+index 0000000000..fc783bbbbc
+--- /dev/null
++++ b/services/git/clacheck.go
+@@ -0,0 +1,26 @@
++// Copyright 2026 The Gitea Authors. All rights reserved.
++// SPDX-License-Identifier: MIT
++
++// BLENDER: contributor agreement
++
++package git
++
++import (
++	"strings"
++
++	git_model "gitea.dev/models/git"
++)
++
++// HideClacheckStatus filters out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere.
++func HideClacheckStatus(statuses []*git_model.CommitStatus) []*git_model.CommitStatus{
++	clacheckIndex := -1
++	for i, s := range statuses {
++		if s.State.IsSuccess() && strings.Contains(s.Context, "clacheck") {
++			clacheckIndex = i
++		}
++	}
++	if clacheckIndex != -1 {
++		statuses = append(statuses[:clacheckIndex], statuses[clacheckIndex+1:]...)
++	}
++	return statuses
++}
 diff --git a/services/git/commit.go b/services/git/commit.go
-index 662e050713..43b08beb07 100644
+index 662e050713..2a525589cf 100644
 --- a/services/git/commit.go
 +++ b/services/git/commit.go
-@@ -5,6 +5,7 @@ package git
- 
- import (
- 	"context"
-+	"strings"
- 
- 	asymkey_model "gitea.dev/models/asymkey"
- 	git_model "gitea.dev/models/git"
-@@ -87,6 +88,19 @@ func ParseCommitsWithStatus(ctx context.Context, oldCommits []*asymkey_model.Sig
+@@ -87,6 +87,11 @@ func ParseCommitsWithStatus(ctx context.Context, oldCommits []*asymkey_model.Sig
  	newCommits := make([]*git_model.SignCommitWithStatuses, 0, len(oldCommits))
  	for _, c := range oldCommits {
  		statuses := statusMap[c.GitCommit.ID.String()]
 +
 +		// BLENDER: contributor agreement
 +		// hide clacheck statuses on individual PR commits
-+		clacheckIndex := -1
-+		for i, s := range statuses {
-+			if s.State.IsSuccess() && strings.Contains(s.Context, "clacheck") {
-+				clacheckIndex = i
-+			}
-+		}
-+		if clacheckIndex != -1 {
-+			statuses = append(statuses[:clacheckIndex], statuses[clacheckIndex+1:]...)
-+		}
++		statuses = HideClacheckStatus(statuses)
 +
  		newCommits = append(newCommits, &git_model.SignCommitWithStatuses{
  			SignCommit: c,
  			Statuses:   statuses,
 diff --git a/services/pull/pull.go b/services/pull/pull.go
-index 6af56b7e8f..de745573a6 100644
+index 6af56b7e8f..81527dbdca 100644
 --- a/services/pull/pull.go
 +++ b/services/pull/pull.go
 @@ -934,7 +934,10 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
@@ -810,7 +844,7 @@ index 6af56b7e8f..de745573a6 100644
  		if err != nil {
  			log.Error("getAllCommitStatus: cant get commit statuses of pull [%d]: %v", issue.PullRequest.ID, err)
  			continue
-@@ -980,13 +984,30 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
+@@ -980,13 +984,22 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
  }
  
  // getAllCommitStatus get pr's commit statuses.
@@ -828,15 +862,7 @@ index 6af56b7e8f..de745573a6 100644
 +	// Filter out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere:
 +	// https://projects.blender.org/infrastructure/meta/issues/208
 +	if skipClacheck {
-+		clacheckIndex := -1
-+		for i, s := range statuses {
-+			if s.State.IsSuccess() && strings.Contains(s.Context, "clacheck") {
-+				clacheckIndex = i
-+			}
-+		}
-+		if clacheckIndex != -1 {
-+			statuses = append(statuses[:clacheckIndex], statuses[clacheckIndex+1:]...)
-+		}
++		statuses = git_service.HideClacheckStatus(statuses)
 +	}
 +
  	lastStatus = git_model.CalcCommitStatus(statuses)

@@ -1,4 +1,4 @@
-From 6ba25ad6f6c9fb8b273ad792a5b0963f10967dd0 Mon Sep 17 00:00:00 2001
+From 72681aeb4b4c7bba38c8a33399b756d52a3cfe63 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
 Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
@@ -13,10 +13,10 @@ Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
  5 files changed, 29 insertions(+), 22 deletions(-)
 
 diff --git a/models/issues/label.go b/models/issues/label.go
-index 5b9898b3b2..16cf17e71f 100644
+index 0c3010601a..21ca3b62d4 100644
 --- a/models/issues/label.go
 +++ b/models/issues/label.go
-@@ -179,11 +179,8 @@ func (l *Label) BelongsToRepo() bool {
+@@ -181,11 +181,8 @@ func (l *Label) BelongsToRepo() bool {
  	return l.RepoID > 0
  }
  
@@ -30,7 +30,7 @@ index 5b9898b3b2..16cf17e71f 100644
  	lastIndex := strings.LastIndex(l.Name, "/")
  	if lastIndex == -1 || lastIndex == 0 || lastIndex == len(l.Name)-1 {
  		return ""
-@@ -191,6 +188,14 @@ func (l *Label) ExclusiveScope() string {
+@@ -193,6 +190,14 @@ func (l *Label) ExclusiveScope() string {
  	return l.Name[:lastIndex]
  }
  
@@ -42,11 +42,11 @@ index 5b9898b3b2..16cf17e71f 100644
 +	return l.Scope()
 +}
 +
- // NewLabel creates a new label
- func NewLabel(ctx context.Context, l *Label) error {
- 	color, err := label.NormalizeColor(l.Color)
+ // CompareLabelForDisplay compares labels for displaying them in dropdowns or lists.
+ // Labels are grouped by their exclusive scope, and labels within the same scope
+ // are sorted by their exclusive order, where unordered labels (order 0) come last.
 diff --git a/modules/templates/util_render.go b/modules/templates/util_render.go
-index 46f90be78a..3a6a84c583 100644
+index 6c34496e87..aa31330b74 100644
 --- a/modules/templates/util_render.go
 +++ b/modules/templates/util_render.go
 @@ -101,7 +101,7 @@ func (ut *RenderUtils) RenderLabel(label *issues_model.Label) template.HTML {
@@ -59,7 +59,7 @@ index 46f90be78a..3a6a84c583 100644
  
  	if label.IsArchived() {
 diff --git a/templates/repo/issue/filter_actions.tmpl b/templates/repo/issue/filter_actions.tmpl
-index 4c9366a645..b132c52b83 100644
+index 3729c467c1..696d8fefdf 100644
 --- a/templates/repo/issue/filter_actions.tmpl
 +++ b/templates/repo/issue/filter_actions.tmpl
 @@ -22,15 +22,15 @@

@@ -1,7 +1,7 @@
-From ed50bcc5e572c9b3ae21e485a9007019b8bccf92 Mon Sep 17 00:00:00 2001
+From 8bc0a3a346d016e58b6a5f2590de2e8c85dae13b Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
-Subject: [PATCH 14/21] BLENDER: Add Spam Reporting
+Subject: [PATCH] BLENDER: Add Spam Reporting
 
 Spam reporting is available for trusted users (org members and admins) via a
 button on a spammer's profile page;
@@ -11,7 +11,7 @@ a new "pending spam reports" indicator in the header for admins.
  models/user/spamreport.go                     | 136 +++++++++++
  options/locale/locale_en-US.json              |  18 ++
  routers/common/pagetmpl.go                    |  19 ++
- routers/web/admin/spamreports.go              | 135 +++++++++++
+ routers/web/admin/spamreports.go              | 134 ++++++++++
  routers/web/shared/user/header.go             |  20 ++
  routers/web/user/setting/spamreport.go        |  43 ++++
  routers/web/web.go                            |  10 +
@@ -23,7 +23,7 @@ a new "pending spam reports" indicator in the header for admins.
  templates/shared/user/profile_big_avatar.tmpl |  14 ++
  .../shared/user/purgespammer_user_dialog.tmpl |  14 ++
  .../shared/user/spamreport_user_dialog.tmpl   |  14 ++
- 15 files changed, 853 insertions(+), 1 deletion(-)
+ 15 files changed, 852 insertions(+), 1 deletion(-)
  create mode 100644 models/user/spamreport.go
  create mode 100644 routers/web/admin/spamreports.go
  create mode 100644 routers/web/user/setting/spamreport.go
@@ -276,10 +276,10 @@ index 09c7a04bde..2f690b8bed 100644
  }
 diff --git a/routers/web/admin/spamreports.go b/routers/web/admin/spamreports.go
 new file mode 100644
-index 0000000000..7c1bb7206c
+index 0000000000..c32010db90
 --- /dev/null
 +++ b/routers/web/admin/spamreports.go
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,134 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -354,8 +354,7 @@ index 0000000000..7c1bb7206c
 +		}
 +	}
 +
-+	pager := context.NewPagination(pagerCount, opts.PageSize, opts.Page, 5)
-+	pager.AddParamFromRequest(ctx.Req)
++	pager := context.NewPagerBuilder(ctx).TotalCount(pagerCount).PerPageLimit(opts.PageSize).CurPage(opts.Page).Build()
 +	ctx.Data["Page"] = pager
 +
 +	ctx.HTML(http.StatusOK, tplSpamReports)

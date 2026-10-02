@@ -1,7 +1,7 @@
-From bc582458736b8208b983af9e14c8df445d223f6c Mon Sep 17 00:00:00 2001
+From 6c69ce7ddc13dde8da84b3527bdf9eb049d9998c Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
-Subject: [PATCH 18/21] BLENDER: contributor agreement support
+Subject: [PATCH] BLENDER: contributor agreement support
 
 New models ContributorAgreement and SignedContributorAgreement are
 introduced.
@@ -28,11 +28,11 @@ automatically posts a pull request comment when a check fails:
     @username please sign the contributor agreement $CLA_SLUG at
     https://projects.blender.org/user/settings/contributor_agreements
 ---
- models/user/contributor_agreement.go          |  62 ++++++
+ models/user/contributor_agreement.go          |  74 +++++++
  options/locale/locale_en-US.json              |  18 ++
  routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
- .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
+ .../admin/signed_contributor_agreements.go    | 200 ++++++++++++++++++
  routers/web/repo/commit.go                    |   4 +
  routers/web/repo/issue_list.go                |   2 +-
  routers/web/user/home.go                      |   2 +-
@@ -49,7 +49,7 @@ automatically posts a pull request comment when a check fails:
  templates/swagger/v1-swagger.generated.json   |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 21 files changed, 813 insertions(+), 9 deletions(-)
+ 21 files changed, 824 insertions(+), 9 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -61,10 +61,10 @@ automatically posts a pull request comment when a check fails:
 
 diff --git a/models/user/contributor_agreement.go b/models/user/contributor_agreement.go
 new file mode 100644
-index 0000000000..0dd3373fbc
+index 0000000000..9cb7931f41
 --- /dev/null
 +++ b/models/user/contributor_agreement.go
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,74 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -84,6 +84,18 @@ index 0000000000..0dd3373fbc
 +	Slug        string             `xorm:"UNIQUE"`
 +	CreatedUnix timeutil.TimeStamp `xorm:"created"`
 +	Content     string             `xorm:"TEXT NOT NULL"`
++}
++
++type FindContributorAgreementsOptions struct {
++	db.ListOptions
++}
++
++func (opts *FindContributorAgreementsOptions) ToConds() builder.Cond {
++	return builder.NewCond()
++}
++
++func (opts *FindContributorAgreementsOptions) ToOrders() string {
++	return "id ASC"
 +}
 +
 +type SignedContributorAgreement struct {
@@ -283,10 +295,10 @@ index 0000000000..5a75897016
 +}
 diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
 new file mode 100644
-index 0000000000..3f9e760101
+index 0000000000..893de16e0d
 --- /dev/null
 +++ b/routers/web/admin/signed_contributor_agreements.go
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,200 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -356,11 +368,10 @@ index 0000000000..3f9e760101
 +		return
 +	}
 +	ctx.Data["SignedContributorAgreements"] = signedContributorAgreements
-+	pager := context.NewPagination(count, opts.PageSize, opts.Page, 5)
-+	pager.AddParamFromRequest(ctx.Req)
++	pager := context.NewPagerBuilder(ctx).TotalCount(count).PerPageLimit(opts.PageSize).CurPage(opts.Page).Build()
 +	ctx.Data["Page"] = pager
 +
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -391,7 +402,7 @@ index 0000000000..3f9e760101
 +	ctx.Data["Title"] = ctx.Tr("admin.signed_contributor_agreements.batch_sign")
 +	ctx.Data["PageIsSignedContributorAgreements"] = true
 +
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -414,7 +425,7 @@ index 0000000000..3f9e760101
 +	ctx.Data["ContributorAgreementID"] = contributorAgreementID
 +	ctx.Data["Usernames"] = strings.Join(usernames, "\n")
 +
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -544,7 +555,7 @@ index aa6ffab033..c4113450ae 100644
  		return
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..f77770c0da
+index 0000000000..b516e6a66c
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
 @@ -0,0 +1,194 @@
@@ -587,7 +598,7 @@ index 0000000000..f77770c0da
 +
 +// ContributorAgreements lists all agreements and shows which ones were signed.
 +func ContributorAgreements(ctx *gitea_context.Context) {
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -703,7 +714,7 @@ index 0000000000..f77770c0da
 +	if err != nil {
 +		return fmt.Errorf("failed to fetch issues: %w", err)
 +	}
-+	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, pullsAsIssues, false)
++	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, user, pullsAsIssues, false)
 +	if err != nil {
 +		return fmt.Errorf("failed to GetIssuesAllCommitStatus: %w", err)
 +	}

@@ -1,7 +1,7 @@
-From 72681aeb4b4c7bba38c8a33399b756d52a3cfe63 Mon Sep 17 00:00:00 2001
+From 60bce395b43fb0561418c800f36475c69c580d5b Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 13:58:05 +0200
-Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
+Subject: [PATCH 05/21] BLENDER: Support both exclusive and non-exclusive scope
  for labels
 
 ---
@@ -13,7 +13,7 @@ Subject: [PATCH 05/22] BLENDER: Support both exclusive and non-exclusive scope
  5 files changed, 29 insertions(+), 22 deletions(-)
 
 diff --git a/models/issues/label.go b/models/issues/label.go
-index 0c3010601a..21ca3b62d4 100644
+index 24ca9d8c1c..252ca5a0d3 100644
 --- a/models/issues/label.go
 +++ b/models/issues/label.go
 @@ -181,11 +181,8 @@ func (l *Label) BelongsToRepo() bool {
@@ -25,13 +25,13 @@ index 0c3010601a..21ca3b62d4 100644
 -	if !l.Exclusive {
 -		return ""
 -	}
-+// Return scope substring of label name, or empty string if none exists
++// Scope returns scope substring of label name, or empty string if none exists
 +func (l *Label) Scope() string {
- 	lastIndex := strings.LastIndex(l.Name, "/")
- 	if lastIndex == -1 || lastIndex == 0 || lastIndex == len(l.Name)-1 {
+ 	scope, name, found := strings.CutLast(l.Name, "/")
+ 	if !found || scope == "" || name == "" {
  		return ""
 @@ -193,6 +190,14 @@ func (l *Label) ExclusiveScope() string {
- 	return l.Name[:lastIndex]
+ 	return scope
  }
  
 +// ExclusiveScope returns scope substring of label name, or empty string if none exists
@@ -46,11 +46,11 @@ index 0c3010601a..21ca3b62d4 100644
  // Labels are grouped by their exclusive scope, and labels within the same scope
  // are sorted by their exclusive order, where unordered labels (order 0) come last.
 diff --git a/modules/templates/util_render.go b/modules/templates/util_render.go
-index 6c34496e87..aa31330b74 100644
+index 42b195f7cb..0b24072395 100644
 --- a/modules/templates/util_render.go
 +++ b/modules/templates/util_render.go
-@@ -101,7 +101,7 @@ func (ut *RenderUtils) RenderLabel(label *issues_model.Label) template.HTML {
- 	locale := ut.ctx.Value(translation.ContextKey).(translation.Locale)
+@@ -105,7 +105,7 @@ func (ut *RenderUtils) RenderLabel(label *issues_model.Label) template.HTML {
+ 	locale := ut.locale()
  	var extraCSSClasses string
  	textColor := util.ContrastColor(label.Color)
 -	labelScope := label.ExclusiveScope()
@@ -59,7 +59,7 @@ index 6c34496e87..aa31330b74 100644
  
  	if label.IsArchived() {
 diff --git a/templates/repo/issue/filter_actions.tmpl b/templates/repo/issue/filter_actions.tmpl
-index 3729c467c1..696d8fefdf 100644
+index 28af2cd0ba..deac7d0cd5 100644
 --- a/templates/repo/issue/filter_actions.tmpl
 +++ b/templates/repo/issue/filter_actions.tmpl
 @@ -22,15 +22,15 @@
@@ -149,5 +149,5 @@ index 3eb7ba8d7a..86c847f977 100644
  					{{end}}
  				</div>
 -- 
-2.53.0
+2.55.0
 

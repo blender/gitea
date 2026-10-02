@@ -1,7 +1,7 @@
-From 10738492adda480c1ce98a537b90f1b4cc744bf1 Mon Sep 17 00:00:00 2001
+From cd890ca4b924a8500dce79e6cc3045260c1854a5 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:04:02 +0200
-Subject: [PATCH 07/22] BLENDER: Remember login for OAuth / Blender ID
+Subject: [PATCH 07/21] BLENDER: Remember login for OAuth / Blender ID
 
 Otherwise for some browsers, users have to login again for every session.
 ---
@@ -9,19 +9,20 @@ Otherwise for some browsers, users have to login again for every session.
  1 file changed, 13 insertions(+)
 
 diff --git a/routers/web/auth/oauth.go b/routers/web/auth/oauth.go
-index e861ed9637..b805d12808 100644
+index 4e0a355d87..901e22fe91 100644
 --- a/routers/web/auth/oauth.go
 +++ b/routers/web/auth/oauth.go
-@@ -26,6 +26,8 @@ import (
- 	"gitea.dev/modules/proxy"
+@@ -25,7 +25,9 @@ import (
+ 	"gitea.dev/modules/optional"
  	"gitea.dev/modules/session"
  	"gitea.dev/modules/setting"
 +	"gitea.dev/modules/timeutil"
+ 	"gitea.dev/services/audit"
 +	auth_service "gitea.dev/services/auth"
  	source_service "gitea.dev/services/auth/source"
  	"gitea.dev/services/auth/source/oauth2"
  	"gitea.dev/services/context"
-@@ -437,6 +439,17 @@ func handleOAuth2SignIn(ctx *context.Context, authSource *auth.Source, u *user_m
+@@ -427,6 +429,17 @@ func handleOAuth2SignIn(ctx *context.Context, authSource *auth.Source, u *user_m
  			return
  		}
  
@@ -40,5 +41,5 @@ index e861ed9637..b805d12808 100644
  			ctx.ServerError("resetLocale", err)
  			return
 -- 
-2.53.0
+2.55.0
 

@@ -1,7 +1,7 @@
-From 29f63039b6953234bc91b31aceb5aa361a5d97c3 Mon Sep 17 00:00:00 2001
+From 6c69ce7ddc13dde8da84b3527bdf9eb049d9998c Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
-Subject: [PATCH 18/21] BLENDER: contributor agreement support
+Subject: [PATCH] BLENDER: contributor agreement support
 
 New models ContributorAgreement and SignedContributorAgreement are
 introduced.
@@ -28,11 +28,11 @@ automatically posts a pull request comment when a check fails:
     @username please sign the contributor agreement $CLA_SLUG at
     https://projects.blender.org/user/settings/contributor_agreements
 ---
- models/user/contributor_agreement.go          |  62 ++++++
- options/locale/locale_en-US.json              |  20 +-
+ models/user/contributor_agreement.go          |  74 +++++++
+ options/locale/locale_en-US.json              |  18 ++
  routers/api/v1/api.go                         |   5 +
  routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
- .../admin/signed_contributor_agreements.go    | 201 ++++++++++++++++++
+ .../admin/signed_contributor_agreements.go    | 200 ++++++++++++++++++
  routers/web/repo/commit.go                    |   4 +
  routers/web/repo/issue_list.go                |   2 +-
  routers/web/user/home.go                      |   2 +-
@@ -41,15 +41,15 @@ automatically posts a pull request comment when a check fails:
  routers/web/web.go                            |   9 +
  services/git/clacheck.go                      |  26 +++
  services/git/commit.go                        |   5 +
- services/pull/pull.go                         |  19 +-
+ services/pull/pull.go                         |  23 +-
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
  .../batch_sign.tmpl                           |  35 +++
  .../signed_contributor_agreements/list.tmpl   |  60 ++++++
- templates/swagger/v1_json.tmpl                |  36 ++++
+ templates/swagger/v1-swagger.generated.json   |  36 ++++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 21 files changed, 812 insertions(+), 8 deletions(-)
+ 21 files changed, 824 insertions(+), 9 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -61,10 +61,10 @@ automatically posts a pull request comment when a check fails:
 
 diff --git a/models/user/contributor_agreement.go b/models/user/contributor_agreement.go
 new file mode 100644
-index 0000000000..0dd3373fbc
+index 0000000000..9cb7931f41
 --- /dev/null
 +++ b/models/user/contributor_agreement.go
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,74 @@
 +// Copyright 2025 The Gitea Authors. All rights reserved.
 +// SPDX-License-Identifier: MIT
 +
@@ -84,6 +84,18 @@ index 0000000000..0dd3373fbc
 +	Slug        string             `xorm:"UNIQUE"`
 +	CreatedUnix timeutil.TimeStamp `xorm:"created"`
 +	Content     string             `xorm:"TEXT NOT NULL"`
++}
++
++type FindContributorAgreementsOptions struct {
++	db.ListOptions
++}
++
++func (opts *FindContributorAgreementsOptions) ToConds() builder.Cond {
++	return builder.NewCond()
++}
++
++func (opts *FindContributorAgreementsOptions) ToOrders() string {
++	return "id ASC"
 +}
 +
 +type SignedContributorAgreement struct {
@@ -128,10 +140,10 @@ index 0000000000..0dd3373fbc
 +	db.RegisterModel(new(SignedContributorAgreement))
 +}
 diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
-index 8bfbf601c3..8ac4b40e28 100644
+index cea1d0b783..e00172645c 100644
 --- a/options/locale/locale_en-US.json
 +++ b/options/locale/locale_en-US.json
-@@ -676,6 +676,7 @@
+@@ -662,6 +662,7 @@
    "settings.organization": "Organizations",
    "settings.uid": "UID",
    "settings.webauthn": "Two-Factor Authentication (Security Keys)",
@@ -139,7 +151,7 @@ index 8bfbf601c3..8ac4b40e28 100644
    "settings.public_profile": "Public Profile",
    "settings.biography_placeholder": "Tell us a little bit about yourself! (You can use Markdown)",
    "settings.location_placeholder": "Share your approximate location with others",
-@@ -2944,6 +2945,7 @@
+@@ -2968,6 +2969,7 @@
    "admin.total": "Total: %d",
    "admin.settings": "Admin Settings",
    "admin.spamreports": "Spam Reports",
@@ -147,7 +159,7 @@ index 8bfbf601c3..8ac4b40e28 100644
    "admin.dashboard.new_version_hint": "Gitea %s is now available, you are running %s. Check <a target=\"_blank\" rel=\"noreferrer\" href=\"%s\">the blog</a> for more details.",
    "admin.dashboard.statistic": "Summary",
    "admin.dashboard.maintenance_operations": "Maintenance Operations",
-@@ -3111,6 +3113,17 @@
+@@ -3151,6 +3153,17 @@
    "admin.spamreports.created": "Report Created",
    "admin.spamreports.updated": "Report Updated",
    "admin.spamreports.status": "Report Status",
@@ -165,23 +177,22 @@ index 8bfbf601c3..8ac4b40e28 100644
    "admin.orgs.org_manage_panel": "Organization Management",
    "admin.orgs.name": "Name",
    "admin.orgs.teams": "Teams",
-@@ -3947,5 +3960,10 @@
-   "actions.general.cross_repo_desc": "Allow the selected repositories to be accessed (read-only) by all the repositories in this owner with GITEA_TOKEN when running Actions jobs.",
+@@ -4016,5 +4029,10 @@
    "actions.general.cross_repo_selected": "Selected repositories",
    "actions.general.cross_repo_target_repos": "Target Repositories",
--  "actions.general.cross_repo_add": "Add Target Repository"
-+  "actions.general.cross_repo_add": "Add Target Repository",
+   "actions.general.cross_repo_add": "Add Target Repository",
 +  "contributor_agreements.signed_at": "Signed by you at %s",
 +  "contributor_agreements.confirm": "I agree to the terms of the contributor agreement.",
 +  "contributor_agreements.sign": "Sign",
 +  "contributor_agreements.view_and_sign": "View text and sign",
-+  "contributor_agreements.view": "View text"
++  "contributor_agreements.view": "View text",
+   "packages.owner.settings.cleanuprules.type.already_exists": "A cleanup rule for this package type already exists."
  }
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index fa8d29c28b..21ca5a2598 100644
+index 8953647a99..159ff2848f 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
-@@ -1087,6 +1087,11 @@ func Routes() *web.Router {
+@@ -1152,6 +1152,11 @@ func Routes() *web.Router {
  			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
  		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
  
@@ -284,10 +295,10 @@ index 0000000000..5a75897016
 +}
 diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
 new file mode 100644
-index 0000000000..3f9e760101
+index 0000000000..893de16e0d
 --- /dev/null
 +++ b/routers/web/admin/signed_contributor_agreements.go
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,200 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -357,11 +368,10 @@ index 0000000000..3f9e760101
 +		return
 +	}
 +	ctx.Data["SignedContributorAgreements"] = signedContributorAgreements
-+	pager := context.NewPagination(count, opts.PageSize, opts.Page, 5)
-+	pager.AddParamFromRequest(ctx.Req)
++	pager := context.NewPagerBuilder(ctx).TotalCount(count).PerPageLimit(opts.PageSize).CurPage(opts.Page).Build()
 +	ctx.Data["Page"] = pager
 +
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -392,7 +402,7 @@ index 0000000000..3f9e760101
 +	ctx.Data["Title"] = ctx.Tr("admin.signed_contributor_agreements.batch_sign")
 +	ctx.Data["PageIsSignedContributorAgreements"] = true
 +
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -415,7 +425,7 @@ index 0000000000..3f9e760101
 +	ctx.Data["ContributorAgreementID"] = contributorAgreementID
 +	ctx.Data["Usernames"] = strings.Join(usernames, "\n")
 +
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -490,12 +500,12 @@ index 0000000000..3f9e760101
 +	ctx.Redirect(setting.AppSubURL + "/-/admin/signed_contributor_agreements")
 +}
 diff --git a/routers/web/repo/commit.go b/routers/web/repo/commit.go
-index b1b1909e10..f9d2ccfe8d 100644
+index 7ce0276590..6a6348c230 100644
 --- a/routers/web/repo/commit.go
 +++ b/routers/web/repo/commit.go
-@@ -392,6 +392,10 @@ func Diff(ctx *context.Context) {
- 		git_model.CommitStatusesHideActionsURL(ctx, statuses)
+@@ -389,6 +389,10 @@ func Diff(ctx *context.Context) {
  	}
+ 	git_model.CommitStatusesApplyDoerPermission(ctx, ctx.Doer, statuses)
  
 +	// BLENDER: contributor agreement
 +	// hide clacheck statuses on individual PR commits
@@ -505,47 +515,47 @@ index b1b1909e10..f9d2ccfe8d 100644
  	ctx.Data["CommitStatuses"] = statuses
  
 diff --git a/routers/web/repo/issue_list.go b/routers/web/repo/issue_list.go
-index 5ccef292a2..36f3f9b092 100644
+index 0f12c478c6..8d611edd95 100644
 --- a/routers/web/repo/issue_list.go
 +++ b/routers/web/repo/issue_list.go
-@@ -644,7 +644,7 @@ func prepareIssueFilterAndList(ctx *context.Context, milestoneID int64, projectI
+@@ -565,7 +565,7 @@ func prepareIssueFilterAndList(ctx *context.Context, milestoneID int64, projectI
  		}
  	}
  
--	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
-+	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
+-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues)
++	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues, true)
  	if err != nil {
  		ctx.ServerError("GetIssuesAllCommitStatus", err)
  		return
 diff --git a/routers/web/user/home.go b/routers/web/user/home.go
-index 75b51151f3..2f903e6dbd 100644
+index 138340c763..363f71d05d 100644
 --- a/routers/web/user/home.go
 +++ b/routers/web/user/home.go
-@@ -554,7 +554,7 @@ func buildIssueOverview(ctx *context.Context, unitType unit.Type) {
+@@ -550,7 +550,7 @@ func buildIssueOverview(ctx *context.Context, unitType unit.Type) {
  		}
  	}
  
--	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
-+	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
+-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues)
++	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues, true)
  	if err != nil {
  		ctx.ServerError("GetIssuesLastCommitStatus", err)
  		return
 diff --git a/routers/web/user/notification.go b/routers/web/user/notification.go
-index b82b32f687..1ab7cec78f 100644
+index aa6ffab033..c4113450ae 100644
 --- a/routers/web/user/notification.go
 +++ b/routers/web/user/notification.go
-@@ -268,7 +268,7 @@ func NotificationSubscriptions(ctx *context.Context) {
+@@ -288,7 +288,7 @@ func NotificationSubscriptions(ctx *context.Context) {
  		return
  	}
  
--	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues)
-+	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, issues, true)
+-	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues)
++	commitStatuses, lastStatus, err := pull_service.GetIssuesAllCommitStatus(ctx, ctx.Doer, issues, true)
  	if err != nil {
  		ctx.ServerError("GetIssuesAllCommitStatus", err)
  		return
 diff --git a/routers/web/user/setting/contributor_agreements.go b/routers/web/user/setting/contributor_agreements.go
 new file mode 100644
-index 0000000000..f77770c0da
+index 0000000000..b516e6a66c
 --- /dev/null
 +++ b/routers/web/user/setting/contributor_agreements.go
 @@ -0,0 +1,194 @@
@@ -588,7 +598,7 @@ index 0000000000..f77770c0da
 +
 +// ContributorAgreements lists all agreements and shows which ones were signed.
 +func ContributorAgreements(ctx *gitea_context.Context) {
-+	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &db.ListOptions{})
++	contributorAgreements, err := db.Find[user_model.ContributorAgreement](ctx, &user_model.FindContributorAgreementsOptions{ListOptions: db.ListOptionsAll})
 +	if err != nil {
 +		ctx.ServerError("FindContributorAgreements", err)
 +		return
@@ -704,7 +714,7 @@ index 0000000000..f77770c0da
 +	if err != nil {
 +		return fmt.Errorf("failed to fetch issues: %w", err)
 +	}
-+	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, pullsAsIssues, false)
++	issueID2statuses, _, err := pull_service.GetIssuesAllCommitStatus(ctx, user, pullsAsIssues, false)
 +	if err != nil {
 +		return fmt.Errorf("failed to GetIssuesAllCommitStatus: %w", err)
 +	}
@@ -744,10 +754,10 @@ index 0000000000..f77770c0da
 +	return nil
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index f9d4763016..8239eeafc8 100644
+index 6756c55d58..453692e519 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -736,6 +736,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -760,6 +760,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  
  		// BLENDER: spam reporting
  		m.Post("/spamreport", user_setting.SpamReportUserPost)
@@ -757,7 +767,7 @@ index f9d4763016..8239eeafc8 100644
  	}, reqSignIn, user_setting.SettingsCtxData)
  
  	m.Group("/user", func() {
-@@ -826,6 +829,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -857,6 +860,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  		})
  		m.Post("/purge_spammer", admin.PurgeSpammerPost)
  
@@ -803,7 +813,7 @@ index 0000000000..fc783bbbbc
 +	return statuses
 +}
 diff --git a/services/git/commit.go b/services/git/commit.go
-index 662e050713..2a525589cf 100644
+index 414624a2ea..9c63448ab4 100644
 --- a/services/git/commit.go
 +++ b/services/git/commit.go
 @@ -87,6 +87,11 @@ func ParseCommitsWithStatus(ctx context.Context, oldCommits []*asymkey_model.Sig
@@ -819,44 +829,49 @@ index 662e050713..2a525589cf 100644
  			SignCommit: c,
  			Statuses:   statuses,
 diff --git a/services/pull/pull.go b/services/pull/pull.go
-index 6af56b7e8f..81527dbdca 100644
+index 1cf18f1acf..8e104402d8 100644
 --- a/services/pull/pull.go
 +++ b/services/pull/pull.go
-@@ -934,7 +934,10 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
+@@ -907,9 +907,12 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
+ 	return util.UnsafeBytesToString(buf)
  }
  
- // GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status
--func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
-+// BLENDER: contributor agreement
-+// Modified func signature, all callers that render a list of PRs need to pass
-+// skipClacheck=false.
-+func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
+-// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
+-// The returned statuses are redacted for doer.
+-func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
++	// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
++	// The returned statuses are redacted for doer.
++	// BLENDER: contributor agreement
++	// Modified func signature, all callers that render a list of PRs need to pass
++	// skipClacheck=false.
++	func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
  	if err := issues.LoadPullRequests(ctx); err != nil {
  		return nil, nil, err
  	}
-@@ -968,7 +971,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
+@@ -943,7 +946,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
  			gitRepos[issue.RepoID] = gitRepo
  		}
  
--		statuses, lastStatus, err := getAllCommitStatus(ctx, gitRepo, issue.PullRequest)
+-		statuses, lastStatus, err := getAllCommitStatus(ctx, doer, gitRepo, issue.PullRequest)
 +		// BLENDER: contributor agreement
-+		statuses, lastStatus, err := getAllCommitStatus(ctx, gitRepo, issue.PullRequest, skipClacheck)
++		statuses, lastStatus, err := getAllCommitStatus(ctx, doer, gitRepo, issue.PullRequest, skipClacheck)
  		if err != nil {
  			log.Error("getAllCommitStatus: cant get commit statuses of pull [%d]: %v", issue.PullRequest.ID, err)
  			continue
-@@ -980,13 +984,22 @@ func GetIssuesAllCommitStatus(ctx context.Context, issues issues_model.IssueList
+@@ -955,7 +959,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
  }
  
  // getAllCommitStatus get pr's commit statuses.
--func getAllCommitStatus(ctx context.Context, gitRepo *git.Repository, pr *issues_model.PullRequest) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
+-func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git.Repository, pr *issues_model.PullRequest) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
 +// BLENDER: contributor agreement, modified func signature
-+func getAllCommitStatus(ctx context.Context, gitRepo *git.Repository, pr *issues_model.PullRequest, skipClacheck bool) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
- 	sha, shaErr := gitRepo.GetRefCommitID(pr.GetGitHeadRefName())
++func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git.Repository, pr *issues_model.PullRequest, skipClacheck bool) (statuses []*git_model.CommitStatus, lastStatus *git_model.CommitStatus, err error) {
+ 	sha, shaErr := gitRepo.GetRefCommitID(ctx, pr.GetGitHeadRefName())
  	if shaErr != nil {
  		return nil, nil, shaErr
+@@ -965,6 +970,14 @@ func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git
+ 	for _, status := range statuses {
+ 		status.Repo = pr.BaseRepo // the repo is already loaded, spare the permission lookup a query
  	}
- 
- 	statuses, err = git_model.GetLatestCommitStatus(ctx, pr.BaseRepo.ID, sha, db.ListOptionsAll)
 +
 +	// BLENDER: contributor agreement
 +	// Filter out clacheck successes from the collection of commit statuses to avoid noise and confusion in the PR listing and elsewhere:
@@ -865,9 +880,9 @@ index 6af56b7e8f..81527dbdca 100644
 +		statuses = git_service.HideClacheckStatus(statuses)
 +	}
 +
+ 	// CalcCommitStatus copies a TargetURL out of the statuses, so hide before combining
+ 	git_model.CommitStatusesApplyDoerPermission(ctx, doer, statuses)
  	lastStatus = git_model.CalcCommitStatus(statuses)
- 	return statuses, lastStatus, err
- }
 diff --git a/services/user/delete.go b/services/user/delete.go
 index e6ff7075c4..7aba706ce4 100644
 --- a/services/user/delete.go
@@ -882,7 +897,7 @@ index e6ff7075c4..7aba706ce4 100644
  		return fmt.Errorf("deleteBeans: %w", err)
  	}
 diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
-index 9268134887..775e29966b 100644
+index 787657c55c..aa1d0c430f 100644
 --- a/templates/admin/navbar.tmpl
 +++ b/templates/admin/navbar.tmpl
 @@ -13,7 +13,7 @@
@@ -1011,11 +1026,11 @@ index 0000000000..9c4db6809d
 +</div>
 +
 +{{template "admin/layout_footer" .}}
-diff --git a/templates/swagger/v1_json.tmpl b/templates/swagger/v1_json.tmpl
-index 7735ecb4b4..6990479e58 100644
---- a/templates/swagger/v1_json.tmpl
-+++ b/templates/swagger/v1_json.tmpl
-@@ -21397,6 +21397,42 @@
+diff --git a/templates/swagger/v1-swagger.generated.json b/templates/swagger/v1-swagger.generated.json
+index f7128397a3..25f88d37f3 100644
+--- a/templates/swagger/v1-swagger.generated.json
++++ b/templates/swagger/v1-swagger.generated.json
+@@ -24205,6 +24205,42 @@
          }
        }
      },
@@ -1110,10 +1125,10 @@ index 0000000000..6276dd5b7b
 +	</div>
 +{{template "user/settings/layout_footer" .}}
 diff --git a/templates/user/settings/navbar.tmpl b/templates/user/settings/navbar.tmpl
-index c278105243..e15b8712e5 100644
+index 40d7a2b14b..7b5d080ffc 100644
 --- a/templates/user/settings/navbar.tmpl
 +++ b/templates/user/settings/navbar.tmpl
-@@ -71,5 +71,8 @@
+@@ -74,5 +74,8 @@
  		<a class="{{if .PageIsSettingsRepos}}active {{end}}item" href="{{AppSubUrl}}/user/settings/repos">
  			{{ctx.Locale.Tr "settings.repos"}}
  		</a>
@@ -1123,5 +1138,5 @@ index c278105243..e15b8712e5 100644
  	</div>
  </div>
 -- 
-2.53.0
+2.55.0
 

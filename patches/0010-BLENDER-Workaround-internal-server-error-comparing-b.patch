@@ -1,31 +1,31 @@
-From b87f860c5e6ebc04de1e9f48ed3156b22de16a1e Mon Sep 17 00:00:00 2001
+From c227b476ea37b2e5fd5218ef81ce0c5b70ab3182 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Fri, 10 May 2024 14:07:25 +0200
-Subject: [PATCH 10/22] BLENDER: Workaround internal server error comparing
+Subject: [PATCH 10/21] BLENDER: Workaround internal server error comparing
  branches on some repos
 
 https://projects.blender.org/infrastructure/blender-projects-platform/issues/61
 
 And add trace log for investigation.
 ---
- modules/gitrepo/fetch.go | 4 +++-
+ modules/git/fetch.go | 4 +++-
  1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/modules/gitrepo/fetch.go b/modules/gitrepo/fetch.go
-index b50571e5b2..84beb11d6b 100644
---- a/modules/gitrepo/fetch.go
-+++ b/modules/gitrepo/fetch.go
+diff --git a/modules/git/fetch.go b/modules/git/fetch.go
+index 0995aacb5b..611d7ba08e 100644
+--- a/modules/git/fetch.go
++++ b/modules/git/fetch.go
 @@ -21,7 +21,9 @@ import (
  // merge base between commits.
- func FetchRemoteCommit(ctx context.Context, repo, remoteRepo Repository, commitID string) error {
- 	return globallock.LockAndDo(ctx, getRepoWriteLockKey(repo.RelativePath()), func(ctx context.Context) error {
--		return RunCmd(ctx, repo, gitcmd.NewCommand("fetch", "--no-tags").
+ func FetchRemoteCommit(ctx context.Context, repo, remoteRepo RepositoryFacade, commitID string) error {
+ 	return LockWriteAndDo(ctx, repo, func(ctx context.Context) error {
+-		return gitcmd.NewCommand("fetch", "--no-tags").
 +		// BLENDER: --no-write-commit-graph works around internal server errors comparing
 +		// branches on some repos, caused by commit-graph-chain.lock files that should not be there.
-+		return RunCmd(ctx, repo, gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").
- 			AddDynamicArguments(repoPath(remoteRepo)).
- 			AddDynamicArguments(commitID))
- 	})
++		return gitcmd.NewCommand("fetch", "--no-write-commit-graph", "--no-tags").
+ 			AddDynamicArguments(gitrepo.RepoLocalPath(remoteRepo)).
+ 			AddDynamicArguments(commitID).
+ 			WithRepo(repo).Run(ctx)
 -- 
-2.53.0
+2.55.0
 

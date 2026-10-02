@@ -1,7 +1,7 @@
-From d96d188d3d7b44d5647592e729b376dbe9dad6ef Mon Sep 17 00:00:00 2001
+From ed50bcc5e572c9b3ae21e485a9007019b8bccf92 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Fri, 11 Apr 2025 16:57:54 +0200
-Subject: [PATCH 14/22] BLENDER: Add Spam Reporting
+Subject: [PATCH 14/21] BLENDER: Add Spam Reporting
 
 Spam reporting is available for trusted users (org members and admins) via a
 button on a spammer's profile page;
@@ -20,10 +20,10 @@ a new "pending spam reports" indicator in the header for admins.
  templates/admin/navbar.tmpl                   |   5 +-
  templates/admin/spamreports/list.tmpl         |  94 +++++++
  templates/base/head_navbar_icons.tmpl         |  10 +
- templates/shared/user/profile_big_avatar.tmpl |  17 ++
+ templates/shared/user/profile_big_avatar.tmpl |  14 ++
  .../shared/user/purgespammer_user_dialog.tmpl |  14 ++
  .../shared/user/spamreport_user_dialog.tmpl   |  14 ++
- 15 files changed, 856 insertions(+), 1 deletion(-)
+ 15 files changed, 853 insertions(+), 1 deletion(-)
  create mode 100644 models/user/spamreport.go
  create mode 100644 routers/web/admin/spamreports.go
  create mode 100644 routers/web/user/setting/spamreport.go
@@ -176,10 +176,10 @@ index 0000000000..84ee0a859f
 +	return nil, err
 +}
 diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
-index 9373aa83a9..18b997309e 100644
+index c6e574774b..fdefdc35ce 100644
 --- a/options/locale/locale_en-US.json
 +++ b/options/locale/locale_en-US.json
-@@ -648,6 +648,15 @@
+@@ -635,6 +635,15 @@
    "user.block.note.edit": "Edit note",
    "user.block.list": "Blocked users",
    "user.block.list.none": "You have not blocked any users.",
@@ -195,7 +195,7 @@ index 9373aa83a9..18b997309e 100644
    "settings.general": "General",
    "settings.profile": "Profile",
    "settings.account": "Account",
-@@ -2934,6 +2943,7 @@
+@@ -2958,6 +2967,7 @@
    "admin.last_page": "Last",
    "admin.total": "Total: %d",
    "admin.settings": "Admin Settings",
@@ -203,7 +203,7 @@ index 9373aa83a9..18b997309e 100644
    "admin.dashboard.new_version_hint": "Gitea %s is now available, you are running %s. Check <a target=\"_blank\" rel=\"noreferrer\" href=\"%s\">the blog</a> for more details.",
    "admin.dashboard.statistic": "Summary",
    "admin.dashboard.maintenance_operations": "Maintenance Operations",
-@@ -3020,6 +3030,7 @@
+@@ -3047,6 +3057,7 @@
    "admin.dashboard.sync_tag.started": "Tags Sync started",
    "admin.dashboard.rebuild_issue_indexer": "Rebuild issue indexer",
    "admin.dashboard.sync_repo_licenses": "Sync repo licenses",
@@ -211,7 +211,7 @@ index 9373aa83a9..18b997309e 100644
    "admin.users.user_manage_panel": "User Account Management",
    "admin.users.new_account": "Create User Account",
    "admin.users.name": "Username",
-@@ -3093,6 +3104,13 @@
+@@ -3133,6 +3144,13 @@
    "admin.emails.delete_desc": "Are you sure you want to delete this email address?",
    "admin.emails.deletion_success": "The email address has been deleted.",
    "admin.emails.delete_primary_email_error": "You cannot delete the primary email address.",
@@ -416,10 +416,10 @@ index 0000000000..7c1bb7206c
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/shared/user/header.go b/routers/web/shared/user/header.go
-index e4fd464375..d64d881908 100644
+index 0114dc8ea7..2e82adf035 100644
 --- a/routers/web/shared/user/header.go
 +++ b/routers/web/shared/user/header.go
-@@ -23,6 +23,7 @@ import (
+@@ -22,6 +22,7 @@ import (
  	"gitea.dev/modules/setting"
  	"gitea.dev/modules/util"
  	"gitea.dev/services/context"
@@ -427,7 +427,7 @@ index e4fd464375..d64d881908 100644
  )
  
  // prepareContextForProfileBigAvatar set the context for big avatar view on the profile page
-@@ -88,6 +89,25 @@ func prepareContextForProfileBigAvatar(ctx *context.Context) {
+@@ -87,6 +88,25 @@ func prepareContextForProfileBigAvatar(ctx *context.Context) {
  		if err != nil && !errors.Is(err, util.ErrNotExist) {
  			ctx.ServerError("GetBlocking", err)
  		}
@@ -503,12 +503,12 @@ index 0000000000..99bc483f88
 +	ctx.Redirect(setting.AppSubURL + "/" + username)
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index 0bfae44e86..f9d4763016 100644
+index 0aecc64c47..6756c55d58 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -733,6 +733,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -757,6 +757,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  			m.Get("", user_setting.BlockedUsers)
- 			m.Post("", web.Bind(forms.BlockUserForm{}), user_setting.BlockedUsersPost)
+ 			m.Post("", web.Bind[*forms.BlockUserForm](), user_setting.BlockedUsersPost)
  		})
 +
 +		// BLENDER: spam reporting
@@ -516,7 +516,7 @@ index 0bfae44e86..f9d4763016 100644
  	}, reqSignIn, user_setting.SettingsCtxData)
  
  	m.Group("/user", func() {
-@@ -816,6 +819,13 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -847,6 +850,13 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  			m.Post("/delete", admin.DeleteEmail)
  		})
  
@@ -865,7 +865,7 @@ index 0000000000..226498266f
 +	assert.NoError(t, err)
 +}
 diff --git a/templates/admin/navbar.tmpl b/templates/admin/navbar.tmpl
-index a54fa530e2..9268134887 100644
+index 4f821a9e66..787657c55c 100644
 --- a/templates/admin/navbar.tmpl
 +++ b/templates/admin/navbar.tmpl
 @@ -13,7 +13,7 @@
@@ -988,7 +988,7 @@ index 0000000000..af99e44a3a
 +
 +{{template "admin/layout_footer" .}}
 diff --git a/templates/base/head_navbar_icons.tmpl b/templates/base/head_navbar_icons.tmpl
-index 019e78cb60..66c9be0314 100644
+index b6a2ef1020..2816fb4014 100644
 --- a/templates/base/head_navbar_icons.tmpl
 +++ b/templates/base/head_navbar_icons.tmpl
 @@ -3,6 +3,7 @@
@@ -996,13 +996,13 @@ index 019e78cb60..66c9be0314 100644
  	{{- $activeStopwatch := call $data.GetActiveStopwatch -}}
  	{{- $notificationUnreadCount := call $data.GetNotificationUnreadCount -}}
 +	{{- $pendingSpamReportsCount := call $data.GetPendingSpamReportsCount -}}
- 	{{if $activeStopwatch}}
- 	<a class="item active-stopwatch {{$itemExtraClass}}" href="{{$activeStopwatch.IssueLink}}" title="{{ctx.Locale.Tr "active_stopwatch"}}" data-seconds="{{$activeStopwatch.Seconds}}">
+ 	{{/* always rendered so a real-time push can reveal it without a reload */}}
+ 	<a class="item active-stopwatch{{if not $activeStopwatch}} tw-hidden{{end}} {{$itemExtraClass}}" {{if $activeStopwatch}}href="{{$activeStopwatch.IssueLink}}" data-seconds="{{$activeStopwatch.Seconds}}"{{end}} title="{{ctx.Locale.Tr "active_stopwatch"}}">
  		<div class="tw-relative flex-text-block">
-@@ -11,6 +12,15 @@
+@@ -10,6 +11,15 @@
+ 			<span class="header-stopwatch-dot"></span>
  		</div>
  	</a>
- 	{{end}}
 +
 +	{{if and $data.IsSiteAdmin $pendingSpamReportsCount}}
 +	<a class="item tw-mx-0" href="{{AppSubUrl}}/-/admin/spamreports">
@@ -1016,30 +1016,26 @@ index 019e78cb60..66c9be0314 100644
  		<div class="tw-relative flex-text-block">
  			{{svg "octicon-bell"}}
 diff --git a/templates/shared/user/profile_big_avatar.tmpl b/templates/shared/user/profile_big_avatar.tmpl
-index 1b44b6c444..5f5ecdff77 100644
+index 47d23a5729..17eeca010f 100644
 --- a/templates/shared/user/profile_big_avatar.tmpl
 +++ b/templates/shared/user/profile_big_avatar.tmpl
-@@ -137,9 +137,26 @@
- 						<a class="muted" href="{{AppSubUrl}}/user/settings/blocked_users">{{ctx.Locale.Tr "user.block.unblock"}}</a>
- 					{{end}}
- 				</li>
-+				{{if .CanReportSpam}}
-+					<li>
-+						{{if .ExistingSpamReport}}
-+							<span>
-+								{{ctx.Locale.Tr "user.spamreport.existing_status" .ExistingSpamReport.Status}}
-+							</span>
-+						{{else}}
-+						  {{if .IsAdmin}}
-+								<a class="muted show-modal" href="#" data-modal="#purgespammer-user-modal" data-modal-modal-username="{{.ContextUser.Name}}" data-modal-modal-form.url="{{AppSubUrl}}/-/admin/purge_spammer">{{ctx.Locale.Tr "user.purgespammer.profile_button"}}</a>
-+							{{else}}
-+								<a class="muted show-modal" href="#" data-modal="#spamreport-user-modal" data-modal-modal-username="{{.ContextUser.Name}}" data-modal-modal-form.url="{{AppSubUrl}}/user/settings/spamreport">{{ctx.Locale.Tr "user.spamreport.profile_button"}}</a>
-+							{{end}}
-+						{{end}}
-+					</li>
-+				{{end}}
- 			{{end}}
- 		</ul>
+@@ -145,8 +145,22 @@
+ 					<a href="{{AppSubUrl}}/user/settings/blocked_users">{{ctx.Locale.Tr "user.block.unblock"}}</a>
+ 				{{end}}
+ 			</div>
++
++			{{if .CanReportSpam}}
++				<div class="item">
++					{{if .ExistingSpamReport}}
++						<span>{{ctx.Locale.Tr "user.spamreport.existing_status" .ExistingSpamReport.Status}}</span>
++					{{else if .IsAdmin}}
++						<a class="show-modal" href="#" data-modal="#purgespammer-user-modal" data-modal-modal-username="{{.ContextUser.Name}}" data-modal-modal-form.url="{{AppSubUrl}}/-/admin/purge_spammer">{{ctx.Locale.Tr "user.purgespammer.profile_button"}}</a>
++					{{else}}
++						<a class="show-modal" href="#" data-modal="#spamreport-user-modal" data-modal-modal-username="{{.ContextUser.Name}}" data-modal-modal-form.url="{{AppSubUrl}}/user/settings/spamreport">{{ctx.Locale.Tr "user.spamreport.profile_button"}}</a>
++					{{end}}
++				</div>
++			{{end}}
+ 		{{end}}
  	</div>
  </div>
  
@@ -1087,5 +1083,5 @@ index 0000000000..e9015fd16c
 +	</div>
 +</div>
 -- 
-2.53.0
+2.55.0
 

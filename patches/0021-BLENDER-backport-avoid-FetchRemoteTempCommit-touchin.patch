@@ -1,0 +1,99 @@
+From 932c7a6938a7562945ea1917e55a5aea294c7ee1 Mon Sep 17 00:00:00 2001
+From: wxiaoguang <wxiaoguang@gmail.com>
+Date: Mon, 5 Oct 2026 13:03:18 +0800
+Subject: [PATCH] BLENDER(backport): avoid FetchRemoteTempCommit touching
+ unnecessary resources (#39583)
+
+Also rename FetchRemoteCommit to FetchRemoteTempCommit to clarify its
+purpose
+---
+ modules/git/fetch.go        | 26 +++++++++++---------------
+ modules/git/git.go          |  4 ----
+ services/git/compare.go     |  4 ++--
+ services/pull/merge_tree.go |  5 ++---
+ 4 files changed, 15 insertions(+), 24 deletions(-)
+
+diff --git a/modules/git/fetch.go b/modules/git/fetch.go
+index 0995aacb5b..45208da49e 100644
+--- a/modules/git/fetch.go
++++ b/modules/git/fetch.go
+@@ -10,20 +10,16 @@ import (
+ 	"gitea.dev/modules/git/gitrepo"
+ )
+ 
+-// FetchRemoteCommit fetches a specific commit and its related objects from a remote
+-// repository into the managed repository.
++// FetchRemoteTempCommit fetches a specific commit and its related objects from a remote repository
++// into the managed repository for temporary use (e.g.: compare, check merge base, etc.).
+ //
+-// If no reference (branch, tag, or other ref) points to the fetched commit, it will
+-// be treated as unreachable and cleaned up by `git gc` after the default prune
+-// expiration period (2 weeks). Ref: https://www.kernel.org/pub/software/scm/git/docs/git-gc.html
+-//
+-// This behavior is sufficient for temporary operations, such as determining the
+-// merge base between commits.
+-func FetchRemoteCommit(ctx context.Context, repo, remoteRepo RepositoryFacade, commitID string) error {
+-	return LockWriteAndDo(ctx, repo, func(ctx context.Context) error {
+-		return gitcmd.NewCommand("fetch", "--no-tags").
+-			AddDynamicArguments(gitrepo.RepoLocalPath(remoteRepo)).
+-			AddDynamicArguments(commitID).
+-			WithRepo(repo).Run(ctx)
+-	})
++// If no reference (branch, tag, or other ref) points to the fetched commit, it will be treated as unreachable
++// and cleaned up by auto-gc (a future push) or Gitea's "git gc" cronjob after the default prune expiration period.
++// Ref: https://www.kernel.org/pub/software/scm/git/docs/git-gc.html
++func FetchRemoteTempCommit(ctx context.Context, repo, remoteRepo RepositoryFacade, commitID string) error {
++	// since it is for temporary use, we don't need to update any ref or lock anything or maintain anything
++	return gitcmd.NewCommand("fetch", "--no-tags", "--no-write-commit-graph", "--no-write-fetch-head", "--no-auto-maintenance").
++		AddDynamicArguments(gitrepo.RepoLocalPath(remoteRepo)).
++		AddDynamicArguments(commitID).
++		WithRepo(repo).Run(ctx)
+ }
+diff --git a/modules/git/git.go b/modules/git/git.go
+index d2ab08061b..29bd27bf3d 100644
+--- a/modules/git/git.go
++++ b/modules/git/git.go
+@@ -209,7 +209,3 @@ func runGitTests(m interface{ Run() int }) int {
+ func LockConfigAndDo(ctx context.Context, repo RepositoryFacade, fn func(ctx context.Context) error) error {
+ 	return globallock.LockAndDo(ctx, "repo-config:"+repo.GitRepoManagedID(), fn)
+ }
+-
+-func LockWriteAndDo(ctx context.Context, repo RepositoryFacade, fn func(ctx context.Context) error) error {
+-	return globallock.LockAndDo(ctx, "repo-write:"+repo.GitRepoManagedID(), fn)
+-}
+diff --git a/services/git/compare.go b/services/git/compare.go
+index 6394fefe28..0bdebd0910 100644
+--- a/services/git/compare.go
++++ b/services/git/compare.go
+@@ -73,8 +73,8 @@ func GetCompareInfo(ctx context.Context, baseRepo, headRepo *repo_model.Reposito
+ 	if baseRepo.ID != headRepo.ID {
+ 		exist := headGitRepo.IsReferenceExist(ctx, compareInfo.BaseCommitID)
+ 		if !exist {
+-			if err := git.FetchRemoteCommit(ctx, headRepo, baseRepo, compareInfo.BaseCommitID); err != nil {
+-				return compareInfo, fmt.Errorf("FetchRemoteCommit: %w", err)
++			if err := git.FetchRemoteTempCommit(ctx, headRepo, baseRepo, compareInfo.BaseCommitID); err != nil {
++				return compareInfo, fmt.Errorf("FetchRemoteTempCommit: %w", err)
+ 			}
+ 		}
+ 	}
+diff --git a/services/pull/merge_tree.go b/services/pull/merge_tree.go
+index 00d217dcce..0dc64bec94 100644
+--- a/services/pull/merge_tree.go
++++ b/services/pull/merge_tree.go
+@@ -90,11 +90,10 @@ func checkPullRequestMergeableByMergeTree(ctx context.Context, pr *issues_model.
+ 	}
+ 
+ 	// 4. fetch head commit id into the current repository
+-	// it will be checked in 2 weeks by default from git if the pull request created failure.
+ 	if !pr.IsSameRepo() {
+ 		if !baseGitRepo.IsReferenceExist(ctx, pr.HeadCommitID) {
+-			if err := git.FetchRemoteCommit(ctx, pr.BaseRepo, pr.HeadRepo, pr.HeadCommitID); err != nil {
+-				return fmt.Errorf("FetchRemoteCommit: %w", err)
++			if err := git.FetchRemoteTempCommit(ctx, pr.BaseRepo, pr.HeadRepo, pr.HeadCommitID); err != nil {
++				return fmt.Errorf("FetchRemoteTempCommit: %w", err)
+ 			}
+ 		}
+ 	}
+-- 
+2.55.0
+

@@ -574,8 +574,8 @@ func PushToBaseRepo(ctx context.Context, pr *issues_model.PullRequest) error {
 	if err != nil {
 		return err
 	}
-	// fetch, not push: pushing objects FetchRemoteCommit already fetched races background repacks
-	if err := git.FetchRemoteCommit(ctx, pr.BaseRepo, pr.HeadRepo, headCommitID); err != nil {
+	// fetch, not push: pushing objects FetchRemoteTempCommit already fetched races background repacks
+	if err := git.FetchRemoteTempCommit(ctx, pr.BaseRepo, pr.HeadRepo, headCommitID); err != nil {
 		return fmt.Errorf("unable to fetch head branch %s:%s into base repo %s, err: %w",
 			pr.HeadRepo.FullName(), pr.HeadBranch, pr.BaseRepo.FullName(), err)
 	}
@@ -895,12 +895,12 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
 	return util.UnsafeBytesToString(buf)
 }
 
-	// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
-	// The returned statuses are redacted for doer.
-	// BLENDER: contributor agreement
-	// Modified func signature, all callers that render a list of PRs need to pass
-	// skipClacheck=false.
-	func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
+// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
+// The returned statuses are redacted for doer.
+// BLENDER: contributor agreement
+// Modified func signature, all callers that render a list of PRs need to pass
+// skipClacheck=false.
+func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
 	if err := issues.LoadPullRequests(ctx); err != nil {
 		return nil, nil, err
 	}

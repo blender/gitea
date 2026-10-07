@@ -1,8 +1,9 @@
-From 932c7a6938a7562945ea1917e55a5aea294c7ee1 Mon Sep 17 00:00:00 2001
-From: wxiaoguang <wxiaoguang@gmail.com>
-Date: Mon, 5 Oct 2026 13:03:18 +0800
+From 3fd3cdff5051a130839487367de9ecf3b64ed213 Mon Sep 17 00:00:00 2001
+From: Bart van der Braak <bart@blender.org>
+Date: Wed, 7 Oct 2026 14:46:36 +0200
 Subject: [PATCH] BLENDER(backport): avoid FetchRemoteTempCommit touching
- unnecessary resources (#39583)
+ unnecessary resources
+ ([#39583](https://github.com/go-gitea/gitea/issues/39583))
 
 Also rename FetchRemoteCommit to FetchRemoteTempCommit to clarify its
 purpose
@@ -11,7 +12,8 @@ purpose
  modules/git/git.go          |  4 ----
  services/git/compare.go     |  4 ++--
  services/pull/merge_tree.go |  5 ++---
- 4 files changed, 15 insertions(+), 24 deletions(-)
+ services/pull/pull.go       | 16 ++++++++--------
+ 5 files changed, 23 insertions(+), 32 deletions(-)
 
 diff --git a/modules/git/fetch.go b/modules/git/fetch.go
 index 0995aacb5b..45208da49e 100644
@@ -93,6 +95,40 @@ index 00d217dcce..0dc64bec94 100644
 +				return fmt.Errorf("FetchRemoteTempCommit: %w", err)
  			}
  		}
+ 	}
+diff --git a/services/pull/pull.go b/services/pull/pull.go
+index 9597a91df3..e55bfcd893 100644
+--- a/services/pull/pull.go
++++ b/services/pull/pull.go
+@@ -574,8 +574,8 @@ func PushToBaseRepo(ctx context.Context, pr *issues_model.PullRequest) error {
+ 	if err != nil {
+ 		return err
+ 	}
+-	// fetch, not push: pushing objects FetchRemoteCommit already fetched races background repacks
+-	if err := git.FetchRemoteCommit(ctx, pr.BaseRepo, pr.HeadRepo, headCommitID); err != nil {
++	// fetch, not push: pushing objects FetchRemoteTempCommit already fetched races background repacks
++	if err := git.FetchRemoteTempCommit(ctx, pr.BaseRepo, pr.HeadRepo, headCommitID); err != nil {
+ 		return fmt.Errorf("unable to fetch head branch %s:%s into base repo %s, err: %w",
+ 			pr.HeadRepo.FullName(), pr.HeadBranch, pr.BaseRepo.FullName(), err)
+ 	}
+@@ -895,12 +895,12 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
+ 	return util.UnsafeBytesToString(buf)
+ }
+ 
+-	// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
+-	// The returned statuses are redacted for doer.
+-	// BLENDER: contributor agreement
+-	// Modified func signature, all callers that render a list of PRs need to pass
+-	// skipClacheck=false.
+-	func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
++// GetIssuesAllCommitStatus returns a map of issue ID to a list of all statuses for the most recent commit as well as a map of issue ID to only the commit's latest status.
++// The returned statuses are redacted for doer.
++// BLENDER: contributor agreement
++// Modified func signature, all callers that render a list of PRs need to pass
++// skipClacheck=false.
++func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues issues_model.IssueList, skipClacheck bool) (map[int64][]*git_model.CommitStatus, map[int64]*git_model.CommitStatus, error) {
+ 	if err := issues.LoadPullRequests(ctx); err != nil {
+ 		return nil, nil, err
  	}
 -- 
 2.55.0

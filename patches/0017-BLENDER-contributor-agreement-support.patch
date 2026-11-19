@@ -1,4 +1,4 @@
-From 6c69ce7ddc13dde8da84b3527bdf9eb049d9998c Mon Sep 17 00:00:00 2001
+From 71945e96821e69dd211b3ec25630e72443bcffa0 Mon Sep 17 00:00:00 2001
 From: Oleg Komarov <oleg@blender.org>
 Date: Wed, 28 Jan 2026 12:35:38 +0100
 Subject: [PATCH] BLENDER: contributor agreement support
@@ -31,8 +31,8 @@ automatically posts a pull request comment when a check fails:
  models/user/contributor_agreement.go          |  74 +++++++
  options/locale/locale_en-US.json              |  18 ++
  routers/api/v1/api.go                         |   5 +
- routers/api/v1/user/contributor_agreement.go  |  83 ++++++++
- .../admin/signed_contributor_agreements.go    | 200 ++++++++++++++++++
+ routers/api/v1/user/contributor_agreement.go  |  83 +++++++
+ .../admin/signed_contributor_agreements.go    | 206 ++++++++++++++++++
  routers/web/repo/commit.go                    |   4 +
  routers/web/repo/issue_list.go                |   2 +-
  routers/web/user/home.go                      |   2 +-
@@ -45,11 +45,11 @@ automatically posts a pull request comment when a check fails:
  services/user/delete.go                       |   2 +
  templates/admin/navbar.tmpl                   |   5 +-
  .../batch_sign.tmpl                           |  35 +++
- .../signed_contributor_agreements/list.tmpl   |  60 ++++++
- templates/swagger/v1-swagger.generated.json   |  36 ++++
+ .../signed_contributor_agreements/list.tmpl   |  60 +++++
+ templates/swagger/v1-swagger.generated.json   |  36 +++
  .../user/settings/contributor_agreements.tmpl |  45 ++++
  templates/user/settings/navbar.tmpl           |   3 +
- 21 files changed, 824 insertions(+), 9 deletions(-)
+ 21 files changed, 830 insertions(+), 9 deletions(-)
  create mode 100644 models/user/contributor_agreement.go
  create mode 100644 routers/api/v1/user/contributor_agreement.go
  create mode 100644 routers/web/admin/signed_contributor_agreements.go
@@ -140,10 +140,10 @@ index 0000000000..9cb7931f41
 +	db.RegisterModel(new(SignedContributorAgreement))
 +}
 diff --git a/options/locale/locale_en-US.json b/options/locale/locale_en-US.json
-index cea1d0b783..e00172645c 100644
+index b2ac2a2e45..167316261e 100644
 --- a/options/locale/locale_en-US.json
 +++ b/options/locale/locale_en-US.json
-@@ -662,6 +662,7 @@
+@@ -663,6 +663,7 @@
    "settings.organization": "Organizations",
    "settings.uid": "UID",
    "settings.webauthn": "Two-Factor Authentication (Security Keys)",
@@ -151,7 +151,7 @@ index cea1d0b783..e00172645c 100644
    "settings.public_profile": "Public Profile",
    "settings.biography_placeholder": "Tell us a little bit about yourself! (You can use Markdown)",
    "settings.location_placeholder": "Share your approximate location with others",
-@@ -2968,6 +2969,7 @@
+@@ -2969,6 +2970,7 @@
    "admin.total": "Total: %d",
    "admin.settings": "Admin Settings",
    "admin.spamreports": "Spam Reports",
@@ -159,7 +159,7 @@ index cea1d0b783..e00172645c 100644
    "admin.dashboard.new_version_hint": "Gitea %s is now available, you are running %s. Check <a target=\"_blank\" rel=\"noreferrer\" href=\"%s\">the blog</a> for more details.",
    "admin.dashboard.statistic": "Summary",
    "admin.dashboard.maintenance_operations": "Maintenance Operations",
-@@ -3151,6 +3153,17 @@
+@@ -3152,6 +3154,17 @@
    "admin.spamreports.created": "Report Created",
    "admin.spamreports.updated": "Report Updated",
    "admin.spamreports.status": "Report Status",
@@ -177,7 +177,7 @@ index cea1d0b783..e00172645c 100644
    "admin.orgs.org_manage_panel": "Organization Management",
    "admin.orgs.name": "Name",
    "admin.orgs.teams": "Teams",
-@@ -4016,5 +4029,10 @@
+@@ -4017,5 +4030,10 @@
    "actions.general.cross_repo_selected": "Selected repositories",
    "actions.general.cross_repo_target_repos": "Target Repositories",
    "actions.general.cross_repo_add": "Add Target Repository",
@@ -189,10 +189,10 @@ index cea1d0b783..e00172645c 100644
    "packages.owner.settings.cleanuprules.type.already_exists": "A cleanup rule for this package type already exists."
  }
 diff --git a/routers/api/v1/api.go b/routers/api/v1/api.go
-index 8953647a99..159ff2848f 100644
+index 9cc64adcca..b64577aadf 100644
 --- a/routers/api/v1/api.go
 +++ b/routers/api/v1/api.go
-@@ -1152,6 +1152,11 @@ func Routes() *web.Router {
+@@ -1136,6 +1136,11 @@ func Routes() *web.Router {
  			}, context.UserAssignmentAPI(), checkTokenPublicOnly(), individualPermsChecker)
  		}, tokenRequiresScopes(auth_model.AccessTokenScopeCategoryUser))
  
@@ -295,10 +295,10 @@ index 0000000000..5a75897016
 +}
 diff --git a/routers/web/admin/signed_contributor_agreements.go b/routers/web/admin/signed_contributor_agreements.go
 new file mode 100644
-index 0000000000..893de16e0d
+index 0000000000..7d6a18e458
 --- /dev/null
 +++ b/routers/web/admin/signed_contributor_agreements.go
-@@ -0,0 +1,200 @@
+@@ -0,0 +1,206 @@
 +// Copyright 2025 The Gitea Authors.
 +// SPDX-License-Identifier: MIT
 +
@@ -350,7 +350,13 @@ index 0000000000..893de16e0d
 +	keyword := ctx.FormTrim("q")
 +	ctx.Data["Keyword"] = keyword
 +	if keyword != "" {
-+		users, _, err := user_model.SearchUsers(ctx, user_model.SearchUserOptions{Keyword: keyword, SearchByEmail: true})
++		types := []user_model.UserType{user_model.UserTypeIndividual, user_model.UserTypeUserReserved, user_model.UserTypeBot, user_model.UserTypeRemoteUser}
++		users, _, err := user_model.SearchUsers(ctx, user_model.SearchUserOptions{
++			Actor:         ctx.Doer,
++			Keyword:       keyword,
++			SearchByEmail: true,
++			Types:         types,
++		})
 +		if err != nil {
 +			ctx.ServerError("SearchUsers", err)
 +			return
@@ -528,7 +534,7 @@ index 0f12c478c6..8d611edd95 100644
  		ctx.ServerError("GetIssuesAllCommitStatus", err)
  		return
 diff --git a/routers/web/user/home.go b/routers/web/user/home.go
-index 138340c763..363f71d05d 100644
+index addb9caec9..f66f1ba7c6 100644
 --- a/routers/web/user/home.go
 +++ b/routers/web/user/home.go
 @@ -550,7 +550,7 @@ func buildIssueOverview(ctx *context.Context, unitType unit.Type) {
@@ -754,10 +760,10 @@ index 0000000000..b516e6a66c
 +	return nil
 +}
 diff --git a/routers/web/web.go b/routers/web/web.go
-index 6756c55d58..453692e519 100644
+index 7f2a8c7fb5..6910667e0d 100644
 --- a/routers/web/web.go
 +++ b/routers/web/web.go
-@@ -760,6 +760,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -746,6 +746,9 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  
  		// BLENDER: spam reporting
  		m.Post("/spamreport", user_setting.SpamReportUserPost)
@@ -767,7 +773,7 @@ index 6756c55d58..453692e519 100644
  	}, reqSignIn, user_setting.SettingsCtxData)
  
  	m.Group("/user", func() {
-@@ -857,6 +860,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
+@@ -843,6 +846,12 @@ func registerWebRoutes(m *web.Router, webAuth *AuthMiddleware) {
  		})
  		m.Post("/purge_spammer", admin.PurgeSpammerPost)
  
@@ -829,10 +835,10 @@ index 414624a2ea..9c63448ab4 100644
  			SignCommit: c,
  			Statuses:   statuses,
 diff --git a/services/pull/pull.go b/services/pull/pull.go
-index 1cf18f1acf..8e104402d8 100644
+index 23ac5ae3a8..9597a91df3 100644
 --- a/services/pull/pull.go
 +++ b/services/pull/pull.go
-@@ -907,9 +907,12 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
+@@ -895,9 +895,12 @@ func formatSquashMergeCommitMessages(commits []*git.Commit) string {
  	return util.UnsafeBytesToString(buf)
  }
  
@@ -848,7 +854,7 @@ index 1cf18f1acf..8e104402d8 100644
  	if err := issues.LoadPullRequests(ctx); err != nil {
  		return nil, nil, err
  	}
-@@ -943,7 +946,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
+@@ -931,7 +934,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
  			gitRepos[issue.RepoID] = gitRepo
  		}
  
@@ -858,7 +864,7 @@ index 1cf18f1acf..8e104402d8 100644
  		if err != nil {
  			log.Error("getAllCommitStatus: cant get commit statuses of pull [%d]: %v", issue.PullRequest.ID, err)
  			continue
-@@ -955,7 +959,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
+@@ -943,7 +947,8 @@ func GetIssuesAllCommitStatus(ctx context.Context, doer *user_model.User, issues
  }
  
  // getAllCommitStatus get pr's commit statuses.
@@ -868,7 +874,7 @@ index 1cf18f1acf..8e104402d8 100644
  	sha, shaErr := gitRepo.GetRefCommitID(ctx, pr.GetGitHeadRefName())
  	if shaErr != nil {
  		return nil, nil, shaErr
-@@ -965,6 +970,14 @@ func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git
+@@ -953,6 +958,14 @@ func getAllCommitStatus(ctx context.Context, doer *user_model.User, gitRepo *git
  	for _, status := range statuses {
  		status.Repo = pr.BaseRepo // the repo is already loaded, spare the permission lookup a query
  	}

@@ -1,25 +1,25 @@
-From 5986923310a04c09e8f70ebad9a7ce3a638bc5bd Mon Sep 17 00:00:00 2001
+From 8f97afa6af70ae0b0f57f21b039f4f5019b34bc8 Mon Sep 17 00:00:00 2001
 From: Brecht Van Lommel <brecht@blender.org>
 Date: Tue, 30 Sep 2025 12:57:23 +0200
-Subject: [PATCH 22/22] BLENDER: Make Allow edits from maintainers work for
- pushing LFS files
+Subject: [PATCH 22/22] BLENDER: Make Allow edits from maintainers work for pushing
+ LFS files
 
 If there exists a pull request with this setting, allow maintainers to push
 LFS files just like they can push a branch.
 ---
  models/issues/pull_list.go      | 36 ++++++++++++++++++++
  models/issues/pull_list_test.go | 59 +++++++++++++++++++++++++++++++++
- services/lfs/server.go          |  8 ++++-
- 3 files changed, 102 insertions(+), 1 deletion(-)
+ services/lfs/server.go          |  9 ++++-
+ 3 files changed, 103 insertions(+), 1 deletion(-)
 
 diff --git a/models/issues/pull_list.go b/models/issues/pull_list.go
-index b734c81af9..429b8eab75 100644
+index c7804e68be..8559686d78 100644
 --- a/models/issues/pull_list.go
 +++ b/models/issues/pull_list.go
 @@ -135,6 +135,42 @@ func canMaintainerWriteToBranch(ctx context.Context, headPerm access_model.Permi
  	return false, nil
  }
- 
+
 +// GetUnmergedPullRequestsWithAllowMaintainerEdit returns all pull requests that are open, have not been merged,
 +// have allow edit by maintainer.
 +func GetUnmergedPullRequestsWithAllowMaintainerEdit(ctx context.Context, repoID int64) (PullRequestList, error) {
@@ -127,22 +127,21 @@ index 1312ba1fee..11d45341cd 100644
 +	assert.True(t, canWriteLFS(baseRepo.Owner))
 +}
 diff --git a/services/lfs/server.go b/services/lfs/server.go
-index e4531408e2..dc646108e8 100644
+index 1c223b35fe..282a6a9aca 100644
 --- a/services/lfs/server.go
 +++ b/services/lfs/server.go
-@@ -20,6 +20,7 @@ import (
- 
+@@ -21,6 +21,7 @@ import (
+
  	auth_model "gitea.dev/models/auth"
  	git_model "gitea.dev/models/git"
 +	issues_model "gitea.dev/models/issues"
  	perm_model "gitea.dev/models/perm"
  	access_model "gitea.dev/models/perm/access"
  	repo_model "gitea.dev/models/repo"
-@@ -573,7 +574,12 @@ func authenticate(ctx *context.Context, repository *repo_model.Repository, autho
+@@ -554,9 +555,15 @@ func authenticate(ctx *context.Context, repository *repo_model.Repository, autho
  		return false
  	}
- 
--	canAccess := perm.CanAccess(accessMode, unit.TypeCode)
+
 +	var canAccess bool
 +	if requireWrite {
 +		canAccess = issues_model.CanMaintainerWriteToLFS(ctx, perm, repository.ID, ctx.Doer)
@@ -151,7 +150,11 @@ index e4531408e2..dc646108e8 100644
 +	}
  	// if it doesn't require sign-in and anonymous user has access, return true
  	// if the user is already signed in (for example: by session auth method), and the doer can access, return true
- 	if canAccess && (!requireSigned || ctx.IsSigned) {
--- 
-2.53.0
+-	if perm.CanAccess(accessMode, unit.TypeCode) && ((!requireSigned && !setting.Service.RequireSignInViewStrict) || ctx.IsSigned) {
++	if canAccess && ((!requireSigned && !setting.Service.RequireSignInViewStrict) || ctx.IsSigned) {
+ 		return true
+ 	}
+
+--
+2.55.0
 
